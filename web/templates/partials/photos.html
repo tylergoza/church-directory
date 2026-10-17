@@ -1,0 +1,24 @@
+{{/* Photo upload form. Pass a dict: Action (POST address), CSRF, Current (the photo's file name or ""), Who (for the alt text). Works without JavaScript; the photo controller shrinks and previews the picture first. */}}
+{{define "photo-form"}}
+<form method="post" action="{{.Action}}" enctype="multipart/form-data" class="photo-form" data-controller="photo">
+  {{template "csrf" .CSRF}}
+  <div class="photo-form__current">
+    <img class="photo-preview" src="{{thumbURL .Current}}" alt="{{if .Current}}Current photo of {{.Who}}{{end}}" data-photo-target="preview" {{if not .Current}}hidden{{end}}>
+    {{if not .Current}}<p class="muted small" data-photo-target="empty">No photo yet.</p>{{end}}
+  </div>
+  <div class="field">
+    <label for="photo-file">Choose a picture (JPEG or PNG, up to 5 MB)</label>
+    <input id="photo-file" type="file" name="photo" accept="image/*" required data-photo-target="input" data-action="change->photo#pick">
+    <p class="muted small" data-photo-target="status" role="status"></p>
+  </div>
+  <div class="form__actions">
+    <button type="submit" class="btn btn--sm btn--primary" data-photo-target="submit">{{if .Current}}Replace photo{{else}}Upload photo{{end}}</button>
+  </div>
+</form>
+{{if .Current}}
+<form method="post" action="{{.Action}}/remove" class="photo-form__remove" data-controller="confirm" data-confirm-message-value="Remove this photo?" data-action="submit->confirm#check">
+  {{template "csrf" .CSRF}}
+  <button type="submit" class="btn btn--sm btn--danger-ghost">Remove photo</button>
+</form>
+{{end}}
+{{end}}

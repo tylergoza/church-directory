@@ -1,0 +1,52 @@
+{{define "content"}}
+<div class="page-head">
+  <div><h1>API tokens</h1><p class="muted">An app token lets one of the church's other apps read the directory (the event planner's sign-ups, for example). Tokens start with <code>md_</code>.</p></div>
+</div>
+
+{{if .NewToken}}
+<div class="card narrow">
+  <h2 class="section__title">Your new token</h2>
+  <p>Copy it now and keep it somewhere safe, like the other app's Connections page. It won't be shown again; if it's lost, revoke it and make another.</p>
+  <p><code class="token">{{.NewToken}}</code></p>
+  <p class="muted small">The app sends it with each request to <code>{{.APIBase}}</code> as <code>Authorization: Bearer {{.NewToken}}</code>.</p>
+</div>
+{{end}}
+
+<section class="section">
+  <h2 class="section__title">App tokens</h2>
+  {{if .Tokens}}
+  <div class="table-wrap">
+    <table class="table table--stack">
+      <thead><tr><th>Used by</th><th>Token</th><th>Made</th><th>Last used</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+        {{range .Tokens}}
+          <tr>
+            <td data-label="Used by"><strong>{{.Name}}</strong></td>
+            <td data-label="Token"><code>{{.Prefix}}…</code></td>
+            <td data-label="Made"><span class="small">{{fmtTime .CreatedAt}}{{with .CreatedBy}} by {{.}}{{end}}</span></td>
+            <td data-label="Last used"><span class="small">{{if .LastUsed}}{{fmtTime .LastUsed}}{{else}}<span class="muted">Never</span>{{end}}</span></td>
+            <td class="actions">
+              {{template "delete-button" (dict "Action" (printf "/admin/tokens/%d/delete" .ID) "CSRF" $.CSRF "Label" "Revoke" "Confirm" (printf "Revoke the token for %s? It will stop working right away." .Name))}}
+            </td>
+          </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="muted">No tokens yet.</p>
+  {{end}}
+  <div class="card narrow">
+    <h3 class="section__title">Make an app token</h3>
+    {{template "errors" .Form.Errors}}
+    <form method="post" action="/admin/tokens" class="form">
+      {{template "csrf" .CSRF}}
+      <div class="field">
+        <label for="name">What will use it</label>
+        <input id="name" name="name" value="{{.Form.Name}}" required maxlength="100" placeholder="e.g. Event planner">
+      </div>
+      <div class="form__actions"><button type="submit" class="btn btn--primary">Make app token</button></div>
+    </form>
+  </div>
+</section>
+{{end}}

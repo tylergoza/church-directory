@@ -1,0 +1,22 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/admin/people">People</a> / <a href="/admin/people/{{.Person.ID}}">{{.Person.Name}}</a></nav>
+<div class="page-head"><div><h1>Delete {{.Person.Name}}?</h1></div></div>
+<div class="card narrow">
+  <div class="alert alert--error" role="alert">
+    <strong>This can't be undone.</strong>
+    <ul>
+      <li>{{.Person.Name}}, their notes, their photo, their visibility settings and their family links are removed for good.</li>
+      <li>They're taken out of {{if .PersonHouseholds}}{{range $i, $h := .PersonHouseholds}}{{if $i}}, {{end}}{{$h.Name}}{{end}}{{else}}any household and group{{end}}.</li>
+      <li>{{if .Person.UserID}}Their login stays; it just isn't linked to a profile any more.{{else}}They have no login linked.{{end}}</li>
+    </ul>
+  </div>
+  <p>If they've only moved away or passed away, <a href="/admin/people/{{.Person.ID}}">archive them</a> instead.</p>
+  <form method="post" action="/admin/people/{{.Person.ID}}/delete" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="form__actions">
+      <button type="submit" class="btn btn--danger-ghost">Yes, delete {{.Person.Name}}</button>
+      <a class="btn btn--ghost" href="/admin/people/{{.Person.ID}}">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

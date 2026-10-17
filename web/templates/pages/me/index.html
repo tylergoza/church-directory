@@ -1,0 +1,131 @@
+{{define "content"}}
+<div class="page-head"><div><h1>My profile</h1></div></div>
+
+{{range .Notices}}
+  <div class="alert alert--info" role="status">{{.Text}}</div>
+{{end}}
+{{template "errors" .Errors}}
+
+{{if .Mine}}
+  {{if .IsWaiting}}<p class="alert alert--info" role="status">{{.Waiting}}</p>{{end}}
+  {{if .Hidden}}
+    <div class="card"><p class="muted">Your profile isn't showing right now. Ask the office.</p></div>
+  {{else}}
+    <div class="card">
+      <h2 class="section__title">{{.Page.Person.Name}}</h2>
+      <p class="muted small">This is what other members see.</p>
+      {{template "person-details" .Page.Person}}
+    </div>
+  {{end}}
+
+  {{if .ToAnswer}}
+  <div class="card">
+    <h2 class="section__title">Join requests</h2>
+    <ul class="plain-list">
+      {{range .ToAnswer}}
+        <li>
+          <strong>{{.PersonName}}</strong> to be added to {{.HouseholdName}}{{if .AskedByName}}, asked by {{.AskedByName}}{{end}}.
+          <form method="post" action="/me/requests/{{.ID}}/accept" class="inline-form">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--primary btn--sm">Accept</button></form>
+          <form method="post" action="/me/requests/{{.ID}}/decline" class="inline-form">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--sm">Turn down</button></form>
+        </li>
+      {{end}}
+    </ul>
+  </div>
+  {{end}}
+
+  {{if .Sent}}
+  <div class="card">
+    <h2 class="section__title">Requests I sent</h2>
+    <ul class="plain-list">{{range .Sent}}<li>{{.PersonName}} to {{.HouseholdName}}: waiting for an answer.</li>{{end}}</ul>
+  </div>
+  {{end}}
+
+  {{if .Looked}}
+  <div class="card">
+    <h2 class="section__title">Households I look after</h2>
+    <ul class="plain-list">
+      {{range .Looked}}
+        <li><a href="/me/households/{{.ID}}">{{.Name}}</a>{{if .Contact}} <span class="badge badge--locked">Contact household</span>{{end}}{{if .Managed}} <span class="muted small">(until a head has a login)</span>{{end}}</li>
+      {{end}}
+    </ul>
+  </div>
+  {{end}}
+
+  {{if .CanContact}}
+  <div class="card narrow">
+    <h2 class="section__title">Contact household</h2>
+    <p class="muted">For a child's other parent who doesn't attend. It is never listed or printed. Only you and the office can see and edit it.</p>
+    <form method="post" action="/me/contact-households" class="inline-fields">
+      {{template "csrf" .CSRF}}
+      <div class="field"><label for="contact-name">Household name</label><input id="contact-name" name="name" placeholder="Pat Lee (Sam's mom)" required></div>
+      <button type="submit" class="btn btn--sm">Make contact household</button>
+    </form>
+  </div>
+  {{end}}
+
+  {{with .E}}{{template "person-editor" (dict "E" . "CSRF" $.CSRF)}}{{end}}
+
+  {{with .PendingHousehold}}
+  <div class="card narrow">
+    <h2 class="section__title">Add someone to {{.Name}}</h2>
+    <form method="post" action="/me/household/{{.ID}}/people" class="form">
+      {{template "csrf" $.CSRF}}
+      <div class="field-row">
+        <div class="field"><label for="p_first">First name</label><input id="p_first" name="first_name" required autocomplete="off"></div>
+        <div class="field"><label for="p_last">Last name</label><input id="p_last" name="last_name" required autocomplete="off"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="p_goes">Goes by <span class="optional">optional</span></label><input id="p_goes" name="goes_by" autocomplete="off"></div>
+        <div class="field"><label for="p_suffix">Suffix <span class="optional">optional</span></label><input id="p_suffix" name="suffix" autocomplete="off"></div>
+      </div>
+      <div class="field">
+        <label for="p_role">They are</label>
+        <select id="p_role" name="role"><option value="child">A child</option><option value="adult">An adult</option><option value="head">A head of the household</option></select>
+      </div>
+      <div class="form__actions"><button type="submit" class="btn">Add</button></div>
+    </form>
+  </div>
+  {{end}}
+
+  {{if .CanMakeHousehold}}
+  <div class="card narrow">
+    <h2 class="section__title">Make my household</h2>
+    <form method="post" action="/me/household" class="form">
+      {{template "csrf" .CSRF}}
+      <div class="field"><label for="h_name">Household name</label><input id="h_name" name="name" placeholder="The Smith Family" required></div>
+      <div class="form__actions"><button type="submit" class="btn">Make household</button></div>
+    </form>
+  </div>
+  {{end}}
+{{else if .SelfSignup}}
+  <div class="card narrow">
+    <h2 class="section__title">Make my profile</h2>
+    <p>You're signed in but don't have a profile in the directory yet. Make yours; the office will check it before others can see it.</p>
+    <p class="under13-note">{{.Under13Warning}}</p>
+    <form method="post" action="/me/profile" class="form">
+      {{template "csrf" .CSRF}}
+      <div class="field-row">
+        <div class="field"><label for="first_name">First name</label><input id="first_name" name="first_name" value="{{.Form.First}}" required autocomplete="off"></div>
+        <div class="field"><label for="last_name">Last name</label><input id="last_name" name="last_name" value="{{.Form.Last}}" required autocomplete="off"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="goes_by">Goes by <span class="optional">optional</span></label><input id="goes_by" name="goes_by" value="{{.Form.GoesBy}}" autocomplete="off"></div>
+        <div class="field"><label for="suffix">Suffix <span class="optional">optional</span></label><input id="suffix" name="suffix" value="{{.Form.Suffix}}" autocomplete="off"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="email">Email <span class="optional">optional</span></label><input id="email" name="email" inputmode="email" value="{{.Form.Email}}"></div>
+        <div class="field"><label for="phone">Phone <span class="optional">optional</span></label><input id="phone" name="phone" inputmode="tel" value="{{.Form.Phone}}"></div>
+      </div>
+      {{template "date-fields" (dict "Label" "Birthday" "Prefix" "birth" "Month" .Form.BirthMonth "Day" .Form.BirthDay "Year" .Form.BirthYear)}}
+      <label class="check"><input type="checkbox" name="attest13" value="1"> I am 13 or older</label>
+      <p class="hint">Needed if you leave the birth year empty.</p>
+      <div class="form__actions"><button type="submit" class="btn btn--primary">Make my profile</button></div>
+    </form>
+  </div>
+{{else}}
+  <div class="card narrow">
+    <p>You're signed in, but there's no profile linked to your account yet.</p>
+    <p>If someone sent you a claim link, open it now. Otherwise ask the office to link your account to your profile.</p>
+  </div>
+{{end}}
+{{end}}

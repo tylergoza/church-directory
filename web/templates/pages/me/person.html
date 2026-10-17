@@ -1,0 +1,5 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/me">Me</a></nav>
+<div class="page-head"><div><h1>{{.E.Person.Name}}</h1></div></div>
+{{template "person-editor" (dict "E" .E "CSRF" .CSRF)}}
+{{end}}

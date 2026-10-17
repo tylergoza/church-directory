@@ -1,0 +1,25 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Directory</a></nav>
+<div class="page-head">
+  <div><h1>Birthdays and anniversaries</h1><p class="muted">This month and next. Only dates people have chosen to show.</p></div>
+</div>
+{{range .Months}}
+  <section class="card">
+    <h2 class="section__title">{{.Name}}</h2>
+    <h3>Birthdays</h3>
+    {{if .Birthdays}}
+      <ul class="day-list">
+        {{range .Birthdays}}<li><span class="day-list__day">{{.Day}}</span> {{template "day-people" .}}</li>{{end}}
+      </ul>
+    {{else}}<p class="muted">None to show.</p>{{end}}
+    <h3>Anniversaries</h3>
+    {{if .Anniversaries}}
+      <ul class="day-list">
+        {{range .Anniversaries}}<li><span class="day-list__day">{{.Day}}</span> {{template "day-people" .}}</li>{{end}}
+      </ul>
+    {{else}}<p class="muted">None to show.</p>{{end}}
+  </section>
+{{end}}
+{{end}}
+
+{{define "day-people"}}{{range $i, $p := .People}}{{if $i}} and {{end}}<a href="/people/{{$p.ID}}">{{$p.Name}}</a>{{end}}{{end}}

@@ -1,0 +1,188 @@
+{{/* The person editor on /me and /me/people/{id}. dict "E" meEdit "CSRF" token. The viewer already passed access.CanEditPerson, so every field is theirs to see and change. */}}
+{{define "person-editor"}}
+{{$e := .E}}{{$csrf := .CSRF}}
+{{if $e.Waiting}}<p class="alert alert--info" role="status">Waiting for the office to check this.</p>{{end}}
+{{template "errors" $e.Errors}}
+
+<div class="card">
+  <h2 class="section__title">{{if $e.Self}}My details{{else}}{{$e.Person.Name}}{{end}}</h2>
+  <form method="post" action="{{$e.Base}}" class="form">
+    {{template "csrf" $csrf}}
+    <div class="field-row">
+      <div class="field"><label for="first_name">First name</label><input id="first_name" name="first_name" value="{{$e.Form.First}}" required autocomplete="off"></div>
+      <div class="field"><label for="last_name">Last name</label><input id="last_name" name="last_name" value="{{$e.Form.Last}}" required autocomplete="off"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="goes_by">Goes by <span class="optional">optional</span></label><input id="goes_by" name="goes_by" value="{{$e.Form.GoesBy}}" autocomplete="off"></div>
+      <div class="field"><label for="suffix">Suffix <span class="optional">optional</span></label><input id="suffix" name="suffix" value="{{$e.Form.Suffix}}" placeholder="Jr., Sr., III" autocomplete="off"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="email">Email <span class="optional">optional</span></label><input id="email" name="email" type="text" inputmode="email" autocapitalize="none" value="{{$e.Form.Email}}"></div>
+      <div class="field"><label for="phone">Phone <span class="optional">optional</span></label><input id="phone" name="phone" type="text" inputmode="tel" value="{{$e.Form.Phone}}"></div>
+    </div>
+    {{template "date-fields" (dict "Label" "Birthday" "Prefix" "birth" "Month" $e.Form.BirthMonth "Day" $e.Form.BirthDay "Year" $e.Form.BirthYear)}}
+    {{template "date-fields" (dict "Label" "Anniversary" "Prefix" "anniv" "Month" $e.Form.AnnivMonth "Day" $e.Form.AnnivDay "Year" $e.Form.AnnivYear)}}
+    <p class="hint">If you change a name to one that is already in the directory, the office checks it first and the old name stays until they do.</p>
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Save</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2 class="section__title">What shows to others</h2>
+  <p class="muted">Default follows what the office has set. Anything the office has hidden stays hidden.</p>
+  <form method="post" action="{{$e.Base}}/visibility" class="form">
+    {{template "csrf" $csrf}}
+    <div class="table-wrap">
+      <table class="table table--stack">
+        <thead><tr><th>Field</th><th>Setting</th></tr></thead>
+        <tbody>
+          {{range $e.Vis}}
+            <tr>
+              <td data-label="Field">{{.Label}}</td>
+              <td data-label="Setting">
+                {{if .Force}}<span class="muted">Hidden by the office</span>
+                {{else}}{{template "vis-select" (dict "Name" (printf "shown:%s" .Field) "ID" (printf "vis-%s" .Field) "Label" .Label "State" .State "Default" .Default)}}{{end}}
+              </td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Save what shows</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2 class="section__title">Photo</h2>
+  {{template "photo-form" (dict "Action" (printf "%s/photo" $e.Base) "CSRF" $csrf "Current" $e.Person.Photo "Who" $e.Person.Name)}}
+</div>
+
+{{if $e.Notes}}{{template "notes-section" (dict "Sec" $e.Notes "CSRF" $csrf)}}{{end}}
+
+{{if $e.HeadsToggle}}
+<div class="card">
+  <h2 class="section__title">Heads of my household</h2>
+  {{if $e.Person.HeadsMayEditLocked}}
+    <p>The office has set this {{if $e.Person.HeadsMayEdit}}on{{else}}off{{end}} and only the office can change it.</p>
+    {{if $e.Person.HeadsMayEditReason}}<p class="muted">Reason: {{$e.Person.HeadsMayEditReason}}</p>{{end}}
+    <label class="check"><input type="checkbox" id="heads-may-edit" disabled {{if $e.Person.HeadsMayEdit}}checked{{end}}> Let my household's heads edit my profile</label>
+  {{else}}
+    <form method="post" action="/me/heads-may-edit" class="form">
+      {{template "csrf" $csrf}}
+      <label class="check"><input type="checkbox" id="heads-may-edit" name="heads_may_edit" value="1" {{if $e.Person.HeadsMayEdit}}checked{{end}}> Let my household's heads edit my profile</label>
+      <p class="hint">For when you'd rather someone else kept your details up to date. You can untick it any time.</p>
+      <div class="form__actions"><button type="submit" class="btn btn--sm">Save</button></div>
+    </form>
+  {{end}}
+  {{if $e.Person.HeadsMayEdit}}<p class="alert alert--info">Your household's heads can edit your profile. Every change they make is logged.</p>{{end}}
+</div>
+{{end}}
+
+{{if $e.Households}}
+<div class="card">
+  <h2 class="section__title">{{if eq (len $e.Households) 1}}Household{{else}}Households{{end}}</h2>
+  <ul class="plain-list">
+    {{range $e.Households}}
+      <li>
+        {{if .CanManage}}<a href="/me/households/{{.ID}}">{{.Name}}</a>{{else}}<a href="/households/{{.ID}}">{{.Name}}</a>{{end}}
+        <span class="muted">({{.Role}})</span>
+        {{if .Contact}}<span class="badge badge--locked">Contact household</span>{{end}}
+        {{if .Primary}}{{if gt (len $e.Households) 1}}<span class="badge">Primary</span>{{end}}{{end}}
+        {{if .CanManage}}<a class="btn btn--sm" href="/me/households/{{.ID}}">Manage</a>{{end}}
+        {{if and $e.Self .CanLeave}}{{template "delete-button" (dict "Action" (printf "/me/households/%d/leave" .ID) "CSRF" $csrf "Label" "Leave this household" "Confirm" "Leave this household?")}}{{end}}
+      </li>
+    {{end}}
+  </ul>
+</div>
+{{end}}
+
+{{if $e.CanMulti}}
+<div class="card">
+  <h2 class="section__title">Lives in more than one household</h2>
+  <form method="post" action="{{$e.Base}}/multi-household" class="form">
+    {{template "csrf" $csrf}}
+    <label class="check"><input type="checkbox" id="multi-household" name="multi_household" value="1" {{if $e.Person.MultiHousehold}}checked{{end}}> {{$e.Person.FirstName}} lives in more than one household</label>
+    <div class="field">
+      <label for="multi-reason">Why</label>
+      <select id="multi-reason" name="multi_reason">
+        <option value="divorced" {{if eq $e.Person.MultiReason "divorced"}}selected{{end}}>Parents divorced or separated</option>
+        <option value="other" {{if eq $e.Person.MultiReason "other"}}selected{{end}}>Other</option>
+      </select>
+    </div>
+    <div class="form__actions"><button type="submit" class="btn btn--sm">Save</button></div>
+  </form>
+  {{if $e.Person.MultiHousehold}}
+    {{if gt (len $e.Households) 1}}
+    <form method="post" action="{{$e.Base}}/primary-household" class="inline-fields">
+      {{template "csrf" $csrf}}
+      <div class="field">
+        <label for="primary-household">Primary household</label>
+        <select id="primary-household" name="household_id">
+          {{range $e.Households}}<option value="{{.ID}}" {{if .Primary}}selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+      </div>
+      <button type="submit" class="btn btn--sm">Save primary</button>
+    </form>
+    <p class="hint">The primary household is where they're sorted on their own and in the printed index.</p>
+    {{end}}
+    {{if $e.Targets}}
+    <form method="post" action="{{$e.Base}}/second-household" class="inline-fields">
+      {{template "csrf" $csrf}}
+      <div class="field">
+        <label for="second-household">Add {{$e.Person.FirstName}} to another household</label>
+        <select id="second-household" name="household_id" required>
+          <option value="">Choose&hellip;</option>
+          {{range $e.Targets}}<option value="{{.ID}}">{{.Name}}{{if not .Direct}} (sends a request){{end}}</option>{{end}}
+        </select>
+      </div>
+      <button type="submit" class="btn btn--sm btn--primary">Add or ask</button>
+    </form>
+    <p class="hint">A household you head takes them at once. For anyone else's, a head of it or the office has to say yes.</p>
+    {{end}}
+    {{range $e.Requests}}<p class="muted">Waiting for an answer from {{.HouseholdName}}.</p>{{end}}
+  {{else}}
+    <p class="hint">Tick this first, then you can add them to a second household. Only children can live in more than one.</p>
+  {{end}}
+</div>
+{{end}}
+
+{{if $e.CanLogin}}
+<div class="card">
+  <h2 class="section__title">Their own login</h2>
+  <p class="under13-note">{{$e.Under13Warning}}</p>
+  {{if $e.KnownUnder13}}
+    <p>{{$e.Person.FirstName}} is under 13, so they can't have their own login.</p>
+  {{else if $e.Person.LoginAllowed}}
+    <p>Can have their own login is on. Make a one-time link, good for 14 days, to send them. They sign in with their own account and open it.</p>
+    <div class="form__actions">
+      <form method="post" action="{{$e.Base}}/login" class="inline-form">
+        {{template "csrf" $csrf}}<input type="hidden" name="action" value="claim">
+        <button type="submit" class="btn btn--primary btn--sm">Make claim link</button>
+      </form>
+      <form method="post" action="{{$e.Base}}/login" class="inline-form">
+        {{template "csrf" $csrf}}<input type="hidden" name="action" value="disallow">
+        <button type="submit" class="btn btn--sm">Turn off</button>
+      </form>
+    </div>
+  {{else}}
+    <form method="post" action="{{$e.Base}}/login" class="form">
+      {{template "csrf" $csrf}}<input type="hidden" name="action" value="allow">
+      {{if not $e.AgeKnown}}
+        <label class="check"><input type="checkbox" name="attest13" value="1"> This person is 13 or older</label>
+        <p class="hint">Needed because there is no birth year. Who ticked it and when is recorded.</p>
+      {{end}}
+      <div class="form__actions"><button type="submit" class="btn btn--sm">Can have their own login</button></div>
+    </form>
+  {{end}}
+  <p class="hint">Passwords are never reset here. A forgotten password goes to the office.</p>
+</div>
+{{end}}
+
+{{if $e.CanFamily}}
+<div class="card">
+  <h2 class="section__title">Family</h2>
+  <p class="muted">Parents and spouse links{{if not $e.Self}}, and starting their own household{{end}}.</p>
+  <p><a class="btn btn--sm" href="{{$e.Base}}/family">Family links{{if not $e.Self}} and own household{{end}}</a></p>
+</div>
+{{end}}
+{{end}}

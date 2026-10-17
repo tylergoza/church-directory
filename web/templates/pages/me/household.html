@@ -1,0 +1,209 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/me">Me</a></nav>
+<div class="page-head">
+  <div>
+    <h1>{{.Household.Name}}</h1>
+    <span class="badges">
+      {{if .IsContact}}<span class="badge badge--locked">Contact household</span>{{end}}
+    </span>
+    {{if .IsContact}}<p class="muted">Never listed or printed. Only you and the office can see it.</p>{{end}}
+    {{if .ManagedNote}}<p class="muted">You look after this household until one of its heads has a login.</p>{{end}}
+  </div>
+</div>
+
+<div class="card">
+  {{template "errors" .Errors}}
+  <h2 class="section__title">Household</h2>
+  <form method="post" action="/me/households/{{.Household.ID}}" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="name">Name</label>
+      <input id="name" name="name" value="{{.Household.Name}}" required>
+    </div>
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Save</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2 class="section__title">Addresses</h2>
+  <p class="muted">A household can have more than one, like grandparents who live in their own house. Each person is given one below.</p>
+  {{range .Addresses}}
+    <details class="address">
+      <summary><strong>{{.Title}}</strong>{{if .Label}} <span class="muted">{{.OneLine}}</span>{{end}} <span class="muted small">{{if .Members}}{{pluralize .Members "person"}} live here{{else}}no one assigned{{end}}</span></summary>
+      <form method="post" action="/me/households/{{$.Household.ID}}/addresses/{{.ID}}" class="form">
+        {{template "csrf" $.CSRF}}
+        {{template "address-fields" .}}
+        <div class="form__actions"><button type="submit" class="btn btn--primary btn--sm">Save address</button></div>
+      </form>
+      {{if .ForceHidden}}
+        <p class="muted">The office has hidden this address from the directory.</p>
+      {{else}}
+      <form method="post" action="/me/households/{{$.Household.ID}}/addresses/{{.ID}}/visibility" class="inline-fields">
+        {{template "csrf" $.CSRF}}
+        <div class="field">
+          <span class="label">Shows in the directory</span>
+          {{template "vis-select" (dict "Name" "shown" "ID" (printf "addr-vis-%d" .ID) "Label" "Address visibility" "State" (visState .Shown) "Default" $.AddressDefault)}}
+        </div>
+        <button type="submit" class="btn btn--sm">Save visibility</button>
+      </form>
+      {{end}}
+      <form method="post" action="/me/households/{{$.Household.ID}}/addresses/{{.ID}}/delete" class="inline-fields"
+            data-controller="confirm" data-confirm-message-value="Remove this address?" data-action="submit->confirm#check">
+        {{template "csrf" $.CSRF}}
+        {{if .Members}}
+          {{$id := .ID}}
+          <div class="field">
+            <label for="reassign-{{.ID}}">Move the {{pluralize .Members "person"}} here to</label>
+            <select id="reassign-{{.ID}}" name="reassign" required>
+              <option value="">Choose&hellip;</option>
+              {{range $.Addresses}}{{if ne .ID $id}}<option value="{{.ID}}">{{.Title}}</option>{{end}}{{end}}
+              <option value="none">No address</option>
+            </select>
+          </div>
+        {{end}}
+        <button type="submit" class="btn btn--danger-ghost btn--sm">Remove address</button>
+      </form>
+    </details>
+  {{else}}
+    <p class="muted">No addresses yet.</p>
+  {{end}}
+  <details class="address">
+    <summary><strong>Add an address</strong></summary>
+    <form method="post" action="/me/households/{{.Household.ID}}/addresses" class="form">
+      {{template "csrf" .CSRF}}
+      {{template "address-fields" .BlankAddress}}
+      <div class="form__actions"><button type="submit" class="btn btn--primary btn--sm">Add address</button></div>
+    </form>
+  </details>
+</div>
+
+<div class="card">
+  <h2 class="section__title">Household photo</h2>
+  {{if .PhotoVis.Force}}
+    <p class="muted">The office has hidden this photo from the directory.</p>
+  {{else}}
+  <form method="post" action="/me/households/{{.Household.ID}}/photo-visibility" class="inline-fields">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <span class="label">Shows in the directory</span>
+      {{template "vis-select" (dict "Name" "shown" "ID" "photo-vis" "Label" "Household photo visibility" "State" .PhotoVis.State "Default" .PhotoVis.Default)}}
+    </div>
+    <button type="submit" class="btn btn--sm">Save visibility</button>
+  </form>
+  {{end}}
+  {{template "photo-form" (dict "Action" (printf "/me/households/%d/photo" .Household.ID) "CSRF" .CSRF "Current" .Household.Photo "Who" .Household.Name)}}
+</div>
+
+{{with .Suggest}}{{template "family-suggestions" (dict "Sug" . "HouseholdID" $.Household.ID "CSRF" $.CSRF "Action" (printf "/me/households/%d/family-links" $.Household.ID) "Skip" (printf "/me/households/%d" $.Household.ID))}}{{end}}
+
+<div class="card">
+  <h2 class="section__title">People</h2>
+  {{if .Members}}
+  <div class="table-wrap">
+    <table class="table table--stack">
+      <thead><tr><th>Name</th><th>Role</th><th>Address</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+        {{range .Members}}
+          <tr>
+            <td data-label="Name">
+              {{if .Editable}}<a href="{{if .IsMe}}/me{{else}}/me/people/{{.ID}}{{end}}"><strong>{{.Name}}</strong></a>{{else}}<a href="/people/{{.ID}}"><strong>{{.Name}}</strong></a>{{end}}
+              {{if eq .Kind "contact"}}<span class="badge badge--locked">Contact</span>{{end}}
+              {{if .Waiting}}<span class="badge badge--warn">Waiting for the office</span>{{end}}
+              {{if .UserID}}<span class="badge badge--public">Has login</span>{{end}}
+            </td>
+            <td data-label="Role">{{roleLabel .Role}}</td>
+            <td data-label="Address">
+              <form method="post" action="/me/households/{{$.Household.ID}}/members/{{.ID}}/address" class="inline-fields">
+                {{template "csrf" $.CSRF}}
+                {{$m := .}}
+                <div class="field">
+                  <label class="sr-only" for="addr-{{.ID}}">Address for {{.Name}}</label>
+                  <select id="addr-{{.ID}}" name="address_id">
+                    <option value="0">No address</option>
+                    {{range $.Addresses}}<option value="{{.ID}}" {{if eq .ID $m.AddressID}}selected{{end}}>{{.Title}}</option>{{end}}
+                  </select>
+                </div>
+                <button type="submit" class="btn btn--sm">Save</button>
+              </form>
+            </td>
+            <td class="actions">
+              {{if .CanPromote}}
+              <form method="post" action="/me/households/{{$.Household.ID}}/members/{{.ID}}/head" class="inline-form">
+                {{template "csrf" $.CSRF}}
+                <button type="submit" class="btn btn--sm">Make a head</button>
+              </form>
+              {{end}}
+              {{if and .CanRemove (not .IsMe)}}
+                {{template "delete-button" (dict "Action" (printf "/me/households/%d/members/%d/remove" $.Household.ID .ID) "CSRF" $.CSRF "Label" "Remove" "Confirm" (printf "Take %s out of this household?" .Name))}}
+              {{end}}
+              {{if .IsMe}}
+                {{template "delete-button" (dict "Action" (printf "/me/households/%d/leave" $.Household.ID) "CSRF" $.CSRF "Label" "Leave this household" "Confirm" "Leave this household?")}}
+              {{end}}
+            </td>
+          </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted small">You can remove people who have no login of their own. Someone with a login can leave on their own, or the office can move them.</p>
+  {{else}}
+    <p class="muted">No one yet.</p>
+  {{end}}
+
+  <h3 class="section__title">Add someone</h3>
+  <form method="post" action="/me/households/{{.Household.ID}}/people" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field-row">
+      <div class="field"><label for="p_first">First name</label><input id="p_first" name="first_name" required autocomplete="off"></div>
+      <div class="field"><label for="p_last">Last name</label><input id="p_last" name="last_name" required autocomplete="off"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="p_goes">Goes by <span class="optional">optional</span></label><input id="p_goes" name="goes_by" autocomplete="off"></div>
+      <div class="field"><label for="p_suffix">Suffix <span class="optional">optional</span></label><input id="p_suffix" name="suffix" autocomplete="off"></div>
+    </div>
+    {{template "date-fields" (dict "Label" "Birthday" "Prefix" "birth" "Month" "" "Day" "" "Year" "")}}
+    <div class="field-row">
+      <div class="field">
+        <label for="p_role">They are</label>
+        <select id="p_role" name="role"><option value="child">A child</option><option value="adult">An adult</option></select>
+      </div>
+      {{if .Addresses}}
+      <div class="field">
+        <label for="p_addr">Address</label>
+        <select id="p_addr" name="address_id"><option value="0">No address</option>{{range .Addresses}}<option value="{{.ID}}">{{.Title}}</option>{{end}}</select>
+      </div>
+      {{end}}
+    </div>
+    {{if .IsContact}}
+      <label class="check"><input type="checkbox" name="other_parent" value="1" checked> This is the child's other parent (a contact)</label>
+    {{end}}
+    <p class="hint">If this person is already in the directory, the office checks first. {{.Waiting}} Adults you add can be linked to a login later.</p>
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Add</button></div>
+  </form>
+
+  {{if .IsContact}}
+    <h3 class="section__title">Add a child who lives here too</h3>
+    {{if .CanAddKids}}
+    <form method="post" action="/me/households/{{.Household.ID}}/children" class="inline-fields">
+      {{template "csrf" .CSRF}}
+      <div class="field">
+        <label for="kid">Child</label>
+        <select id="kid" name="person_id" required>
+          <option value="">Choose&hellip;</option>
+          {{range .CanAddKids}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+        </select>
+      </div>
+      {{if .Addresses}}
+      <div class="field">
+        <label for="kid-addr">Address</label>
+        <select id="kid-addr" name="address_id"><option value="0">No address</option>{{range .Addresses}}<option value="{{.ID}}">{{.Title}}</option>{{end}}</select>
+      </div>
+      {{end}}
+      <button type="submit" class="btn btn--sm btn--primary">Add child</button>
+    </form>
+    {{else}}
+      <p class="muted">No child to add yet. Open the child's page and tick <strong>Lives in more than one household</strong> first.</p>
+    {{end}}
+  {{end}}
+</div>
+{{end}}

@@ -1,0 +1,10 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/me">Me</a> / <a href="{{.Back}}">{{.Person.Name}}</a></nav>
+<div class="page-head"><div><h1>Claim link for {{.Person.Name}}</h1></div></div>
+<div class="card narrow">
+  <p>Send this link to {{.Person.FirstName}}. It works once and for 14 days. They sign in with their own account and open it.</p>
+  <code class="claim-url">{{.ClaimURL}}</code>
+  <p class="alert alert--info">This is the only time the link is shown. If it's lost, make a new one (that stops this one working).</p>
+  <p><a class="btn" href="{{.Back}}">Back</a></p>
+</div>
+{{end}}

@@ -1,0 +1,48 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Directory</a></nav>
+<div class="page-head">
+  <div><h1>{{.Page.Person.Name}}</h1></div>
+  {{if .User.IsStaff}}<div class="page-head__actions"><a class="btn btn--sm" href="/admin/people/{{.Page.Person.ID}}">Edit</a></div>{{end}}
+</div>
+<div class="card">
+  {{if .Page.Person.Photo}}<img class="photo-preview photo-thumb--large" src="{{photoURL .Page.Person.Photo}}" alt="Photo of {{.Page.Person.Name}}" width="120" height="120">{{end}}
+  {{template "person-details" .Page.Person}}
+  {{if not (or .Page.Person.Email .Page.Person.Phone .Page.Person.Birthday.Text .Page.Person.Anniversary.Text)}}
+    <p class="muted">No details to show.</p>
+  {{end}}
+</div>
+{{if .Page.Households}}
+<div class="card">
+  <h2 class="section__title">{{if eq (len .Page.Households) 1}}Household{{else}}Households{{end}}</h2>
+  <ul class="plain-list">
+    {{range .Page.Households}}
+      <li><a href="/households/{{.ID}}">{{.Name}}</a> <span class="muted">({{.Role}})</span>{{if .Address}}<br><span class="muted small">{{.Address}}</span>{{end}}</li>
+    {{end}}
+  </ul>
+</div>
+{{end}}
+{{if not .Page.Family.Empty}}
+<div class="card">
+  <h2 class="section__title">Family</h2>
+  <dl class="family-links">
+    {{range .Page.Family.Groups}}
+      <dt>{{.Label}}</dt>
+      <dd>
+        {{range $i, $p := .People}}{{if $i}}, {{end}}<a href="/people/{{$p.ID}}">{{$p.Name}}</a>{{range $p.Households}} <span class="muted small">(<a href="/households/{{.ID}}">{{.Name}}</a>)</span>{{end}}{{end}}
+      </dd>
+    {{end}}
+  </dl>
+</div>
+{{end}}
+{{if .Page.Groups}}
+<div class="card">
+  <h2 class="section__title">Groups</h2>
+  <ul class="plain-list">
+    {{range .Page.Groups}}
+      <li><a href="/groups/{{.ID}}">{{.Name}}</a>{{if .Label}} <span class="muted">({{.Label}})</span>{{end}}{{if .StaffOnly}} <span class="badge badge--locked">Staff only</span>{{end}}</li>
+    {{end}}
+  </ul>
+</div>
+{{end}}
+{{if .Notes}}{{template "notes-section" (dict "Sec" .Notes "CSRF" .CSRF)}}{{end}}
+{{end}}

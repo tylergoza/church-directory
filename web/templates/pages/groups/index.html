@@ -1,0 +1,20 @@
+{{define "content"}}
+<div class="page-head">
+  <div><h1>Groups</h1><p class="muted">Teams and groups at the church. Being in a group gives no extra access.</p></div>
+  {{if .User.IsStaff}}<div class="page-head__actions"><a class="btn btn--sm" href="/admin/groups">Manage groups</a></div>{{end}}
+</div>
+{{if .Groups}}
+  <ul class="plain-list">
+    {{range .Groups}}
+      <li>
+        <a href="/groups/{{.ID}}"><strong>{{.Name}}</strong></a>
+        <span class="muted small">{{pluralize .Count "person"}}</span>
+        {{if .StaffOnly}}<span class="badge badge--locked">Staff only</span>{{end}}
+        {{if .Description}}<br><span class="muted">{{.Description}}</span>{{end}}
+      </li>
+    {{end}}
+  </ul>
+{{else}}
+  <div class="empty"><p>No groups yet.</p></div>
+{{end}}
+{{end}}

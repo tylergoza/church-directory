@@ -1,0 +1,38 @@
+{{define "content"}}
+<div class="page-head">
+  <div><h1>Households</h1><p class="muted">Families that show together in the directory. Addresses belong to the household.</p></div>
+  <a class="btn btn--primary" href="/admin/households/new">Add household</a>
+</div>
+{{template "filter-tabs" (dict "Filters" .Filters "Show" .Show "Base" "/admin/households")}}
+<form method="get" action="/admin/households" class="inline-fields" data-controller="autosubmit">
+  {{if .Show}}<input type="hidden" name="show" value="{{.Show}}">{{end}}
+  <div class="field">
+    <label for="q" class="sr-only">Search by household or member</label>
+    <input id="q" name="q" type="search" value="{{.Q}}" placeholder="Search by household or member" data-action="input->autosubmit#debounced" autocomplete="off">
+  </div>
+  <button type="submit" class="btn btn--sm">Search</button>
+</form>
+{{if .Households}}
+<div class="table-wrap">
+  <table class="table table--stack">
+    <thead><tr><th>Household</th><th>Members</th><th>Status</th></tr></thead>
+    <tbody>
+      {{range .Households}}
+        <tr>
+          <td data-label="Household"><a href="/admin/households/{{.ID}}"><strong>{{.Name}}</strong></a></td>
+          <td data-label="Members">{{if .Members}}{{join .Members ", "}}{{else}}<span class="muted">No one yet</span>{{end}}</td>
+          <td data-label="Status">
+            <span class="badges">
+              {{if eq .Kind "contact"}}<span class="badge badge--locked">Contact</span>{{end}}
+              {{if .Archived}}<span class="badge badge--locked">Archived</span>{{end}}
+            </span>
+          </td>
+        </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{else}}
+<div class="empty"><p>No households{{if .Q}} match "{{.Q}}"{{end}}.</p></div>
+{{end}}
+{{end}}

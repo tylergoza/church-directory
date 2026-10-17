@@ -1,0 +1,119 @@
+{{define "content"}}
+<div class="print-options card">
+  <h1>Print the directory</h1>
+  <p class="muted">Check the preview below, then press Print. In the print window you can choose <strong>Save as PDF</strong>. Turn off "Headers and footers" in the browser's print options.</p>
+  <form method="get" action="/print" class="form">
+    <div class="field-row">
+      <div class="field">
+        <label for="group">What to print</label>
+        <select id="group" name="group">
+          <option value="0">The whole directory</option>
+          {{range .Groups}}{{if not .StaffOnly}}<option value="{{.ID}}" {{if eq .ID $.Opts.Group}}selected{{end}}>Only the group: {{.Name}}</option>{{end}}{{end}}
+        </select>
+      </div>
+      <div class="field">
+        <label for="paper">Paper</label>
+        <select id="paper" name="paper">
+          <option value="letter" {{if not .Opts.Booklet}}selected{{end}}>Letter (8.5 x 11 in)</option>
+          <option value="half" {{if .Opts.Booklet}}selected{{end}}>Half-letter booklet (5.5 x 8.5 in)</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="photos">Photos</label>
+        <select id="photos" name="photos">
+          <option value="on" {{if .Opts.Photos}}selected{{end}}>Include photos</option>
+          <option value="off" {{if not .Opts.Photos}}selected{{end}}>No photos</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="gutter">Binding</label>
+        <select id="gutter" name="gutter">
+          <option value="off" {{if not .Opts.Gutter}}selected{{end}}>No gutter</option>
+          <option value="on" {{if .Opts.Gutter}}selected{{end}}>Leave a gutter for binding</option>
+        </select>
+      </div>
+    </div>
+    <div class="form__actions">
+      <button type="submit" class="btn">Update preview</button>
+      <button type="button" class="btn btn--primary" data-controller="print" data-action="print#print">Print</button>
+    </div>
+  </form>
+</div>
+
+<div class="book {{.Opts.Class}}">
+  <section class="book__cover">
+    {{if .Logo}}<img class="book__logo" src="/logo/{{.Logo}}" alt="">{{end}}
+    <h1 class="book__church">{{.Church}}</h1>
+    <p class="book__title">Member Directory</p>
+    <p class="book__asof">As of {{.AsOf}}</p>
+  </section>
+
+  <section class="book__section">
+    <h2 class="book__heading">Households</h2>
+    <div class="book__cards">
+      {{range .Book.Listing.Entries}}
+        {{if .Family}}
+          <article class="pcard" id="h-{{.Family.ID}}">
+            {{if and $.Opts.Photos .Family.Photo}}<img class="pcard__photo" src="{{thumbURL .Family.Photo}}" alt="">{{end}}
+            <h3 class="pcard__name">{{.Family.Name}}</h3>
+            {{if .Family.Anniversary}}<p class="pcard__line">Anniversary: {{.Family.Anniversary}}</p>{{end}}
+            {{range .Family.Groups}}
+              {{if .Address}}<p class="pcard__addr">{{.Address}}</p>{{end}}
+              {{range .People}}{{template "print-person" (dict "P" . "Photos" $.Opts.Photos)}}{{end}}
+            {{end}}
+          </article>
+        {{else if .Person}}
+          <article class="pcard" id="p-{{.Person.ID}}">
+            {{template "print-person" (dict "P" .Person "Photos" $.Opts.Photos)}}
+          </article>
+        {{end}}
+      {{end}}
+    </div>
+  </section>
+
+  {{if .Book.Groups}}
+  <section class="book__section book__section--break">
+    <h2 class="book__heading">Groups</h2>
+    {{range .Book.Groups}}
+      <div class="pgroup">
+        <h3 class="pgroup__name">{{.Name}}</h3>
+        {{if .Description}}<p class="pcard__line">{{.Description}}</p>{{end}}
+        <p class="pgroup__people">{{range $i, $p := .People}}{{if $i}}; {{end}}{{$p.Person.Name}}{{if $p.Label}} ({{$p.Label}}){{end}}{{end}}</p>
+      </div>
+    {{end}}
+  </section>
+  {{end}}
+
+  <section class="book__section book__section--break">
+    <h2 class="book__heading">Birthdays and anniversaries</h2>
+    <div class="pmonths">
+    {{range .Book.Months}}
+      <div class="pmonth">
+        <h3 class="pgroup__name">{{.Name}}</h3>
+        {{if .Birthdays}}<h4 class="pmonth__kind">Birthdays</h4>
+          <ul class="pdays">{{range .Birthdays}}<li><span class="pdays__day">{{.Day}}</span> {{range $i, $p := .People}}{{if $i}} and {{end}}{{$p.Name}}{{end}}</li>{{end}}</ul>{{end}}
+        {{if .Anniversaries}}<h4 class="pmonth__kind">Anniversaries</h4>
+          <ul class="pdays">{{range .Anniversaries}}<li><span class="pdays__day">{{.Day}}</span> {{range $i, $p := .People}}{{if $i}} and {{end}}{{$p.Name}}{{end}}</li>{{end}}</ul>{{end}}
+        {{if and (not .Birthdays) (not .Anniversaries)}}<p class="pcard__line">None to show.</p>{{end}}
+      </div>
+    {{end}}
+    </div>
+  </section>
+
+  <section class="book__section book__section--break">
+    <h2 class="book__heading">Index of people</h2>
+    <ul class="pindex">
+      {{range .Book.Index}}<li>{{.Name}}: {{range $i, $h := .Households}}{{if $i}}; {{end}}<a href="#{{$h.Anchor}}">{{$h.Name}}</a>{{end}}</li>{{end}}
+    </ul>
+  </section>
+</div>
+{{end}}
+
+{{define "print-person"}}
+<p class="pperson">
+  {{if and .Photos .P.Photo}}<img class="pperson__photo" src="{{thumbURL .P.Photo}}" alt="">{{end}}
+  <span class="pperson__name">{{.P.Name}}</span>{{if .P.Phone}} <span class="pperson__phone">{{.P.Phone}}</span>{{end}}{{if .P.Email}} <span class="pperson__email">{{.P.Email}}</span>{{end}}
+</p>
+{{end}}

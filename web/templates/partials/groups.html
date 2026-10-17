@@ -1,0 +1,18 @@
+{{/* Group form fields. Pass a GroupInput or Group. */}}
+{{define "group-fields"}}
+    <div class="field">
+      <label for="name">Name</label>
+      <input id="name" name="name" value="{{.Name}}" placeholder="Singers" maxlength="100" required>
+    </div>
+    <div class="field">
+      <label for="description">Description <span class="optional">optional</span></label>
+      <textarea id="description" name="description" rows="3" maxlength="1000">{{.Description}}</textarea>
+    </div>
+    <div class="field">
+      <label for="visible_to">Who can see it</label>
+      <select id="visible_to" name="visible_to">
+        <option value="members" {{if ne .VisibleTo "staff"}}selected{{end}}>Members: listed in the directory and printed</option>
+        <option value="staff" {{if eq .VisibleTo "staff"}}selected{{end}}>Staff only</option>
+      </select>
+    </div>
+{{end}}

@@ -1,0 +1,54 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/admin/import">Import people</a></nav>
+<div class="page-head"><div><h1>Preview import</h1>
+  <p class="muted">Nothing is saved yet. Check each row, then press <strong>Import</strong>.</p></div></div>
+{{template "errors" .Errors}}
+<div class="card">
+  <p>Columns used: {{range $i, $c := .File.Mapped}}{{if $i}}, {{end}}<code>{{$c.Header}}</code>{{end}}.
+  {{if .File.Ignored}}Ignored: {{range $i, $c := .File.Ignored}}{{if $i}}, {{end}}<code>{{$c}}</code>{{end}}.{{else}}No columns were ignored.{{end}}</p>
+  <p><strong>{{.Plan.Created}}</strong> new people, <strong>{{.Plan.Linked}}</strong> already here, <strong>{{.Plan.Skipped}}</strong> skipped, <strong>{{len .Plan.Households}}</strong> new households.</p>
+</div>
+<form method="post" action="/admin/import/preview" class="form">
+  {{template "csrf" .CSRF}}
+  <input type="hidden" name="csv" value="{{.CSV}}">
+  <div class="table-wrap">
+    <table class="table table--stack">
+      <thead><tr><th>Line</th><th>Person</th><th>Household and address</th><th>Matches</th><th>What to do</th></tr></thead>
+      <tbody>
+        {{range .Rows}}{{$row := .Row}}
+        <tr>
+          <td data-label="Line">{{$row.Line}}</td>
+          <td data-label="Person"><strong>{{$row.Name}}</strong>
+            <br><span class="muted small">{{$row.Person.Kind}}{{if $row.Person.Email}} · {{$row.Person.Email}}{{end}}{{if $row.Person.Phone}} · {{$row.Person.Phone}}{{end}}
+            {{if not $row.Person.Birth.IsZero}} · born {{$row.Person.Birth}}{{end}}{{if not $row.Person.Anniversary.IsZero}} · anniversary {{$row.Person.Anniversary}}{{end}}</span>
+            {{range $row.Errors}}<br><span class="badge badge--locked">{{.}}</span>{{end}}</td>
+          <td data-label="Household and address">{{if $row.Household}}{{$row.Household}}{{end}}{{if $row.Role}} ({{$row.Role}}){{end}}
+            {{if $row.HasAddress}}<br><span class="muted small">{{$row.Addr.Address1}} {{$row.Addr.Address2}} {{$row.Addr.City}} {{$row.Addr.State}} {{$row.Addr.Postal}}</span>{{end}}</td>
+          <td data-label="Matches">
+            {{range $row.ExistingMatches}}<a href="/admin/people/{{.ID}}">{{.Name}}</a> already here<br>{{end}}
+            {{range .FileMatches}}Same name as line {{.Line}} above<br>{{end}}
+            {{if and (not $row.ExistingMatches) (not .FileMatches)}}<span class="muted">None</span>{{end}}</td>
+          <td data-label="What to do">
+            <select name="choice_{{$row.Index}}" aria-label="What to do with line {{$row.Line}}">
+              {{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}>{{.Label}}</option>{{end}}
+            </select></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Households that will be made</h2>
+    {{range .Plan.Households}}
+      <h3>{{.Name}} <span class="muted small">({{.Kind}})</span></h3>
+      {{if .Addresses}}<ul>{{range .Addresses}}<li>{{.OneLine}}</li>{{end}}</ul>{{end}}
+      <ul>{{$h := .}}{{range .Members}}<li>{{.Row.Name}}, {{.Role}}{{if .PersonID}} (already here, moves in){{end}}{{if ge .Addr 0}}, at {{(index $h.Addresses .Addr).OneLine}}{{end}}</li>{{end}}</ul>
+    {{else}}<p class="muted">No households.</p>{{end}}
+  </div>
+  <div class="form__actions">
+    <button type="submit" class="btn btn--ghost">Update preview</button>
+    <button type="submit" class="btn btn--primary" formaction="/admin/import/run">Import</button>
+    <a class="btn btn--ghost" href="/admin/import">Cancel</a>
+  </div>
+</form>
+{{end}}

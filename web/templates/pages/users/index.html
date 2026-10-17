@@ -1,0 +1,26 @@
+{{define "content"}}
+<div class="page-head">
+  <div><h1>Users</h1><p class="muted">Everyone who can sign in here. A login is not the same as a person in the directory: most people never need one. Members see the directory and edit their own details; editors are staff and manage everyone's; administrators also manage defaults, users, connections, tokens and settings.</p></div>
+  {{if .SSOURL}}<a class="btn btn--ghost" href="{{.SSOURL}}/admin/users">Manage in User Management</a>{{else}}<a class="btn btn--primary" href="/admin/users/new">Add user</a>{{end}}
+</div>
+{{if .SSOURL}}<p class="hint">People, roles and suspensions are managed in User Management. Roles here are copied from there each time someone signs in.</p>{{end}}
+<div class="table-wrap">
+  <table class="table table--stack">
+    <thead><tr><th>Username</th><th>Name</th><th>Role</th><th><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody>
+      {{range .Users}}
+        <tr>
+          <td data-label="Username"><strong>{{.Username}}</strong>{{if eq .ID $.User.ID}} <span class="muted small">(you)</span>{{end}}</td>
+          <td data-label="Name">{{.DisplayName}}</td>
+          <td data-label="Role">{{roleLabel .Role}}</td>
+          <td class="actions">
+            {{if $.SSOURL}}{{if not .Active}}<span class="badge badge--warn">No access</span>{{end}}{{else}}
+            <a class="btn btn--ghost btn--sm" href="/admin/users/{{.ID}}/edit">Edit</a>
+            {{if ne .ID $.User.ID}}{{template "delete-button" (dict "Action" (printf "/admin/users/%d/delete" .ID) "CSRF" $.CSRF "Label" "Delete" "Confirm" (printf "Delete user %s?" .Username))}}{{end}}{{end}}
+          </td>
+        </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}

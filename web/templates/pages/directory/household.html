@@ -1,0 +1,37 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Directory</a></nav>
+<div class="page-head">
+  <div>
+    <h1>{{.Family.Name}}</h1>
+    {{if .Family.Contact}}<span class="badges"><span class="badge badge--locked">Contact household</span></span>{{end}}
+    {{if .Family.Anniversary}}<p class="muted">Anniversary: {{.Family.Anniversary}}</p>{{end}}
+  </div>
+  {{if .User.IsStaff}}<div class="page-head__actions"><a class="btn btn--sm" href="/admin/households/{{.Family.ID}}">Edit</a></div>{{end}}
+</div>
+{{if .Family.Photo}}<div class="card"><img class="photo-preview photo-thumb--large" src="{{photoURL .Family.Photo}}" alt="Photo of {{.Family.Name}}" width="120" height="120"></div>{{end}}
+{{range .Family.Groups}}
+  <section class="card family">
+    {{if .Address}}<h2 class="section__title">{{if .Label}}{{.Label}}: {{end}}{{.Address}}</h2>{{end}}
+    <ul class="people-list">
+      {{range .People}}
+        <li>
+          {{if .Photo}}<img class="photo-thumb" src="{{thumbURL .Photo}}" alt="" loading="lazy" width="64" height="64">{{end}}
+          <a href="/people/{{.ID}}"><strong>{{.Name}}</strong></a>
+          {{if eq .Role "head"}}<span class="badge badge--locked">Head</span>{{end}}
+          {{template "person-details" .}}
+        </li>
+      {{end}}
+    </ul>
+  </section>
+{{else}}
+  <div class="empty"><p>No one to show.</p></div>
+{{end}}
+{{if .Family.Related}}
+<div class="card">
+  <h2 class="section__title">Related households</h2>
+  <ul class="plain-list">
+    {{range .Family.Related}}<li><a href="/households/{{.ID}}">{{.Name}}</a></li>{{end}}
+  </ul>
+</div>
+{{end}}
+{{end}}

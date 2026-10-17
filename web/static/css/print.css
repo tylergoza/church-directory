@@ -1,0 +1,69 @@
+/* The printed directory (/print). Linked from the print page only.
+   @page can't be switched by a class, so each paper/gutter choice is a
+   named page and the .book container picks one with `page:`. The footer
+   text (it holds the church name) comes from /print/footer.css. */
+
+@page letter { size: letter; margin: 0.6in; }
+@page half { size: 5.5in 8.5in; margin: 0.45in; }
+
+/* Gutter: the inside edge gets more room. The first page is a right-hand
+   page, so on right pages the inside is the left. */
+@page letter-g { size: letter; margin: 0.6in; }
+@page letter-g:right { margin-left: 1.1in; }
+@page letter-g:left { margin-right: 1.1in; }
+@page half-g { size: 5.5in 8.5in; margin: 0.45in; }
+@page half-g:right { margin-left: 0.85in; }
+@page half-g:left { margin-right: 0.85in; }
+
+.p-letter { page: letter; }
+.p-letter-g { page: letter-g; }
+.p-half { page: half; }
+.p-half-g { page: half-g; }
+
+.book { font-family: Georgia, "Times New Roman", serif; color: #000; line-height: 1.3; }
+.book a { color: inherit; text-decoration: none; }
+.book__cover { text-align: center; padding: 2em 0; break-after: page; }
+.book__logo { max-width: 3in; max-height: 3in; }
+.book__church { font-size: 28pt; margin: .4em 0 0; }
+.book__title { font-size: 16pt; margin: .2em 0; }
+.book__asof { font-size: 11pt; color: #444; }
+.book__heading { font-size: 16pt; border-bottom: 1pt solid #000; margin: 0 0 .5em; break-after: avoid; }
+.book__section--break { break-before: page; }
+
+.book__cards { column-count: 2; column-gap: .3in; }
+.p-half .book__cards, .p-half-g .book__cards { column-count: 1; }
+.pcard { break-inside: avoid; margin: 0 0 .15in; padding-bottom: .08in; border-bottom: .5pt solid #888; font-size: 10pt; overflow: hidden; }
+.pcard__name { font-size: 11.5pt; margin: 0 0 .1em; }
+.pcard__line, .pcard__addr { margin: 0 0 .1em; }
+.pcard__photo { float: right; width: .8in; height: .8in; object-fit: cover; margin: 0 0 .05in .1in; }
+.pperson { margin: 0; }
+.pperson__name { font-weight: bold; }
+.pperson__photo { width: .45in; height: .45in; object-fit: cover; vertical-align: middle; margin-right: .06in; }
+.pperson__phone, .pperson__email { margin-left: .5em; }
+
+.pgroup { break-inside: avoid; margin: 0 0 .15in; font-size: 10pt; }
+.pgroup__name { font-size: 12pt; margin: 0 0 .1em; break-after: avoid; }
+.pgroup__people { margin: 0; }
+
+.pmonths { column-count: 2; column-gap: .3in; font-size: 10pt; }
+.p-half .pmonths, .p-half-g .pmonths { column-count: 1; }
+.pmonth { break-inside: avoid; margin: 0 0 .15in; }
+.pmonth__kind { font-size: 9pt; margin: .3em 0 0; text-transform: uppercase; color: #444; }
+.pdays { list-style: none; margin: 0; padding: 0; }
+.pdays__day { display: inline-block; min-width: 1.6em; font-weight: bold; }
+
+.pindex { column-count: 2; column-gap: .3in; list-style: none; margin: 0; padding: 0; font-size: 9pt; }
+.p-half .pindex, .p-half-g .pindex { column-count: 1; }
+.pindex li { break-inside: avoid; margin: 0 0 .2em; }
+
+/* On screen the form is shown and the book is a plain preview. */
+@media screen {
+  .book { background: #fff; color: #000; padding: 1em; border: 1px solid #ccc; max-width: 8.5in; margin: 1em auto; }
+  .book__cover { border-bottom: 1px dashed #aaa; margin-bottom: 1em; }
+}
+
+@media print {
+  .topbar, .footer, .skip-link, .offline-banner, .flash, .print-options { display: none !important; }
+  body, .container, main { background: #fff !important; color: #000 !important; margin: 0 !important; padding: 0 !important; max-width: none !important; }
+  .book { border: 0; padding: 0; margin: 0; max-width: none; }
+}

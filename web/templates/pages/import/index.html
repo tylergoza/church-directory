@@ -1,0 +1,39 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/admin">Admin</a></nav>
+<div class="page-head"><div><h1>Import people</h1>
+  <p class="muted">Bring in an existing list from a CSV file. You get a preview first; nothing is saved until you press Import.</p></div></div>
+<div class="card narrow">
+  {{template "errors" .Errors}}
+  <form method="post" action="/admin/import/preview" enctype="multipart/form-data" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="file">CSV file <span class="optional">up to {{.MaxMB}} MB</span></label>
+      <input id="file" type="file" name="file" accept=".csv,text/csv" required>
+    </div>
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Preview</button></div>
+  </form>
+</div>
+<div class="card">
+  <h2>What the file needs</h2>
+  <p>The first row holds the column names, in any order and any capitalisation. Only <strong>first</strong> and <strong>last</strong> are required. Columns not listed here are ignored (the preview tells you which).</p>
+  <div class="table-wrap">
+    <table class="table table--stack">
+      <thead><tr><th>Column</th><th>Also accepted</th><th>What goes in it</th></tr></thead>
+      <tbody>
+        {{range .Fields}}<tr>
+          <td data-label="Column"><code>{{.Field}}</code></td>
+          <td data-label="Also accepted">{{range $i, $a := .Aliases}}{{if $i}}, {{end}}<code>{{$a}}</code>{{end}}</td>
+          <td data-label="What goes in it">{{.Help}}</td></tr>{{end}}
+      </tbody>
+    </table>
+  </div>
+  <h3>How households are made</h3>
+  <ul>
+    <li>Rows with the same <code>household</code> name share one household.</li>
+    <li>With no household name, rows with the same address share one. Anyone else gets a household of their own.</li>
+    <li>A household with several different addresses gets all of them, and each person is at the address on their own row.</li>
+    <li>Names are matched against people already here and against earlier rows, with the same rule as everywhere else: last name, first name or goes-by, and the same suffix. For each row you choose to add it, skip it, or use the person already here (they move into the household the row describes, or are left alone if the row has no household or address).</li>
+    <li>Dates with slashes are month first (3/14/1980).</li>
+  </ul>
+</div>
+{{end}}

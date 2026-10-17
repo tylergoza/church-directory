@@ -1,0 +1,141 @@
+{{define "match-card"}}
+  <div>
+    <h3>{{.Person.Name}}</h3>
+    <dl class="facts">
+      {{if .Person.GoesBy}}<div><dt>Legal name</dt><dd>{{.Person.LegalName}}</dd></div>{{end}}
+      <div><dt>Household</dt><dd>{{if .Households}}{{range $i, $h := .Households}}{{if $i}}, {{end}}<a href="/admin/households/{{$h.HouseholdID}}">{{$h.Name}}</a>{{end}}{{else}}none{{end}}</dd></div>
+      <div><dt>Birthday</dt><dd>{{with dateText .Person.Birth}}{{.}}{{else}}not given{{end}}</dd></div>
+      <div><dt>Login</dt><dd>{{if .LinkedUser}}{{.LinkedUser}}{{else}}no linked user{{end}}</dd></div>
+    </dl>
+    <p class="small"><a href="/admin/people/{{.Person.ID}}">Open</a>
+      {{if .Person.Archived}}<span class="badge badge--locked">Archived</span>{{end}}
+      {{if eq .Person.Kind "contact"}}<span class="badge badge--locked">Contact</span>{{end}}</p>
+  </div>
+{{end}}
+
+{{define "content"}}
+<div class="page-head"><div><h1>Needs action</h1><p class="muted">Things waiting for the office. Nothing here shows to other members until you approve it.</p></div></div>
+
+{{if eq .NA.Count 0}}<div class="empty"><p>Nothing is waiting.</p></div>{{end}}
+
+{{if .NA.Held}}
+<h2 class="section__title">Same name as someone already here</h2>
+{{range .NA.Held}}
+  {{$held := .}}
+  <article class="card na-item">
+    <p><strong>{{.Person.Name}}</strong> was added{{if .CreatedBy}} by {{.CreatedBy}}{{end}}{{if .Households}} to {{range $i, $h := .Households}}{{if $i}}, {{end}}<a href="/admin/households/{{$h.HouseholdID}}">{{$h.Name}}</a> ({{$h.Role}}){{end}}{{end}} and matches {{if .Matches}}someone already in the directory{{else}}nobody now{{end}}.</p>
+    <div class="na-compare">
+      <div>
+        <h3>New entry: {{.Person.Name}}</h3>
+        <dl class="facts">
+          <div><dt>Birthday</dt><dd>{{with dateText .Person.Birth}}{{.}}{{else}}not given{{end}}</dd></div>
+          {{if .Person.Email}}<div><dt>Email</dt><dd>{{.Person.Email}}</dd></div>{{end}}
+          {{if .Person.Phone}}<div><dt>Phone</dt><dd>{{.Person.Phone}}</dd></div>{{end}}
+          <div><dt>Login</dt><dd>{{if .Person.UserID}}{{.CreatedBy}} (self sign-up){{else}}none{{end}}</dd></div>
+        </dl>
+      </div>
+      {{range .Matches}}{{template "match-card" .}}{{end}}
+    </div>
+    {{range .Matches}}
+      <div class="na-actions">
+        <form method="post" action="/admin/needs-action/people/{{$held.Person.ID}}/same" class="form">
+          {{template "csrf" $.CSRF}}
+          <input type="hidden" name="existing_id" value="{{.Person.ID}}">
+          {{range .Copyable}}
+            <label class="check"><input type="checkbox" name="copy" value="{{.Key}}" checked> Copy {{.Label}}: {{.Value}}</label>
+          {{end}}
+          {{if .NeedsAttest}}<label class="check"><input type="checkbox" name="attest13" value="1"> {{.Person.Name}} is 13 or older</label>{{end}}
+          <button type="submit" class="btn btn--primary btn--sm">Same person as {{.Person.Name}}</button>
+        </form>
+      </div>
+    {{end}}
+    <div class="na-actions">
+      <form method="post" action="/admin/needs-action/people/{{.Person.ID}}/different" class="form">
+        {{template "csrf" $.CSRF}}
+        <div class="field-row">
+          <div class="field"><label for="goes-{{.Person.ID}}">Goes by <span class="optional">optional</span></label><input id="goes-{{.Person.ID}}" name="goes_by"></div>
+          <div class="field"><label for="sfx-{{.Person.ID}}">Suffix <span class="optional">optional</span></label><input id="sfx-{{.Person.ID}}" name="suffix" placeholder="Jr., III"></div>
+        </div>
+        <p class="hint">A suffix or goes-by tells them apart, but it's up to you.</p>
+        <button type="submit" class="btn btn--sm">Different people: approve</button>
+      </form>
+      <form method="post" action="/admin/needs-action/people/{{.Person.ID}}/turn-down">
+        {{template "csrf" $.CSRF}}
+        <button type="submit" class="btn btn--danger-ghost btn--sm">Turn down</button>
+      </form>
+    </div>
+  </article>
+{{end}}
+{{end}}
+
+{{if .NA.SelfSignup}}
+<h2 class="section__title">Profiles people made for themselves</h2>
+{{range .NA.SelfSignup}}
+  <article class="card na-item">
+    <p><strong>{{.Person.Name}}</strong>{{if .CreatedBy}}, made by {{.CreatedBy}}{{end}}.
+      {{if .Households}}In {{range $i, $h := .Households}}{{if $i}}, {{end}}{{$h.Name}}{{end}}.{{end}}</p>
+    <div class="na-actions">
+      <form method="post" action="/admin/needs-action/people/{{.Person.ID}}/approve">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--primary btn--sm">Approve</button></form>
+      <form method="post" action="/admin/needs-action/people/{{.Person.ID}}/turn-down">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--danger-ghost btn--sm">Turn down</button></form>
+      <a class="btn btn--ghost btn--sm" href="/admin/people/{{.Person.ID}}">Open</a>
+    </div>
+  </article>
+{{end}}
+{{end}}
+
+{{if .NA.Households}}
+<h2 class="section__title">Households people made</h2>
+{{range .NA.Households}}
+  <article class="card na-item">
+    <p><strong>{{.Household.Name}}</strong>{{if .CreatedBy}}, made by {{.CreatedBy}}{{end}}.</p>
+    {{if .Members}}<p class="muted">{{join .Members ", "}}</p>{{end}}
+    <div class="na-actions">
+      <form method="post" action="/admin/needs-action/households/{{.Household.ID}}/approve">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--primary btn--sm">Approve</button></form>
+      <form method="post" action="/admin/needs-action/households/{{.Household.ID}}/turn-down">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--danger-ghost btn--sm">Turn down</button></form>
+      <a class="btn btn--ghost btn--sm" href="/admin/households/{{.Household.ID}}">Open</a>
+    </div>
+  </article>
+{{end}}
+{{end}}
+
+{{if .NA.Renames}}
+<h2 class="section__title">Name changes</h2>
+{{range .NA.Renames}}
+  <article class="card na-item">
+    <p><a href="/admin/people/{{.Person.ID}}">{{.Person.Name}}</a> to be renamed <strong>{{.NewName}}</strong>, which matches someone already here.</p>
+    <div class="na-compare">{{range .Matches}}{{template "match-card" .}}{{end}}</div>
+    <div class="na-actions">
+      <form method="post" action="/admin/needs-action/renames/{{.Person.ID}}/approve">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--primary btn--sm">Approve the new name</button></form>
+      <form method="post" action="/admin/needs-action/renames/{{.Person.ID}}/turn-down">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--danger-ghost btn--sm">Turn down</button></form>
+    </div>
+  </article>
+{{end}}
+{{end}}
+
+{{if .NA.Requests}}
+<h2 class="section__title">Join requests</h2>
+{{range .NA.Requests}}
+  <article class="card na-item">
+    <p><strong>{{.PersonName}}</strong> to be added to <a href="/admin/households/{{.HouseholdID}}">{{.HouseholdName}}</a>{{if .AskedByName}}, asked by {{.AskedByName}}{{end}}. A head of that household can also answer on their <code>/me</code> page.</p>
+    <div class="na-actions">
+      <form method="post" action="/admin/needs-action/requests/{{.ID}}/accept">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--primary btn--sm">Accept</button></form>
+      <form method="post" action="/admin/needs-action/requests/{{.ID}}/decline">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--danger-ghost btn--sm">Turn down</button></form>
+    </div>
+  </article>
+{{end}}
+{{end}}
+
+{{if .NA.Under13}}
+<h2 class="section__title">Under-13 logins to switch off</h2>
+{{range .NA.Under13}}
+  <article class="card na-item card--alert">
+    <p><strong>{{.PersonName}}</strong>{{if not .PersonName}}A deleted profile{{end}} is under 13 and was unlinked from the single sign-on user <strong>{{.UserName}}</strong>{{if .SSOSubject}} (User Management ID {{.SSOSubject}}){{end}}.</p>
+    <p class="muted">Suspend that person's access to this app in User Management. The directory never deletes users.</p>
+    {{if $.CanSuspend}}
+    <form method="post" action="/admin/needs-action/under13/{{.ID}}/suspend" class="inline-form">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--sm btn--primary">Suspend in User Management</button></form>
+    {{end}}
+    <form method="post" action="/admin/needs-action/under13/{{.ID}}/done" class="inline-form">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--sm">{{if $.CanSuspend}}I did it in User Management{{else}}Done{{end}}</button></form>
+  </article>
+{{end}}
+{{end}}
+{{end}}

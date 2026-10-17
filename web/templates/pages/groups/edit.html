@@ -1,0 +1,103 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/admin/groups">Groups</a></nav>
+<div class="page-head">
+  <div>
+    <h1>{{.Group.Name}}</h1>
+    {{if .Group.Archived}}<p><span class="badge badge--locked">Archived</span></p>{{end}}
+  </div>
+  <div class="page-head__actions">
+    {{if not .Group.Archived}}<a class="btn btn--sm" href="/groups/{{.Group.ID}}">View page</a>{{end}}
+  </div>
+</div>
+{{template "errors" .Errors}}
+<div class="card">
+  <h2 class="section__title">Details</h2>
+  <form method="post" action="/admin/groups/{{.Group.ID}}" class="form">
+    {{template "csrf" .CSRF}}
+    {{template "group-fields" .Group}}
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Save</button></div>
+  </form>
+  <form method="post" action="/admin/groups/{{.Group.ID}}/archive" class="inline-form">
+    {{template "csrf" .CSRF}}
+    {{if .Group.Archived}}
+      <input type="hidden" name="archive" value="0">
+      <button type="submit" class="btn btn--sm">Bring back</button>
+    {{else}}
+      <input type="hidden" name="archive" value="1">
+      <button type="submit" class="btn btn--danger-ghost btn--sm">Archive</button>
+    {{end}}
+  </form>
+</div>
+
+<div class="card">
+  <h2 class="section__title">People</h2>
+  {{if .Members}}
+    <div class="table-wrap">
+      <table class="table table--stack">
+        <thead><tr><th>Person</th><th>Label</th><th>Place</th><th></th></tr></thead>
+        <tbody>
+          {{range $i, $m := .Members}}
+            <tr>
+              <td data-label="Person"><a href="/admin/people/{{$m.Person.ID}}">{{$m.Person.Name}}</a>{{if $m.Person.Archived}} <span class="badge badge--locked">Archived</span>{{end}}{{if eq $m.Person.Kind "contact"}} <span class="badge badge--locked">Contact</span>{{end}}</td>
+              <td data-label="Label" colspan="2">
+                <form method="post" action="/admin/groups/{{$.Group.ID}}/members/{{$m.Person.ID}}" class="inline-fields">
+                  {{template "csrf" $.CSRF}}
+                  <div class="field"><label class="sr-only" for="label-{{$m.Person.ID}}">Label for {{$m.Person.Name}}</label>
+                    <input id="label-{{$m.Person.ID}}" name="label" value="{{$m.Label}}" placeholder="Chair, Leader" maxlength="100"></div>
+                  <div class="field"><label class="sr-only" for="pos-{{$m.Person.ID}}">Place for {{$m.Person.Name}}</label>
+                    <input id="pos-{{$m.Person.ID}}" name="position" type="number" min="1" inputmode="numeric" value="{{add $i 1}}"></div>
+                  <button type="submit" class="btn btn--sm">Save</button>
+                </form>
+              </td>
+              <td data-label="Actions">
+                <form method="post" action="/admin/groups/{{$.Group.ID}}/members/{{$m.Person.ID}}/move" class="inline-fields">
+                  {{template "csrf" $.CSRF}}
+                  <button type="submit" name="dir" value="up" class="btn btn--sm" aria-label="Move {{$m.Person.Name}} up" {{if eq $i 0}}disabled{{end}}>Up</button>
+                  <button type="submit" name="dir" value="down" class="btn btn--sm" aria-label="Move {{$m.Person.Name}} down" {{if eq (add $i 1) (len $.Members)}}disabled{{end}}>Down</button>
+                </form>
+                <form method="post" action="/admin/groups/{{$.Group.ID}}/members/{{$m.Person.ID}}/remove" class="inline-form">
+                  {{template "csrf" $.CSRF}}
+                  <button type="submit" class="btn btn--danger-ghost btn--sm">Remove</button>
+                </form>
+              </td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  {{else}}
+    <p class="muted">No one yet.</p>
+  {{end}}
+
+  {{if not .Group.Archived}}
+  <h3>Add someone</h3>
+  <form method="get" action="/admin/groups/{{.Group.ID}}" class="inline-fields" role="search">
+    <div class="field">
+      <label for="q" class="sr-only">Search by name</label>
+      <input id="q" name="q" type="search" value="{{.Q}}" placeholder="Search by name" autocomplete="off">
+    </div>
+    <button type="submit" class="btn btn--sm">Search</button>
+  </form>
+  {{if .Q}}
+    {{if .Found}}
+      <ul class="plain-list">
+        {{range .Found}}
+          <li>
+            <form method="post" action="/admin/groups/{{$.Group.ID}}/members" class="inline-fields">
+              {{template "csrf" $.CSRF}}
+              <input type="hidden" name="person_id" value="{{.Person.ID}}">
+              <span>{{.Person.Name}}{{if .Households}} <span class="muted small">{{join .Households ", "}}</span>{{end}}</span>
+              <div class="field"><label class="sr-only" for="add-label-{{.Person.ID}}">Label</label>
+                <input id="add-label-{{.Person.ID}}" name="label" placeholder="Label (optional)" maxlength="100"></div>
+              <button type="submit" class="btn btn--sm btn--primary">Add</button>
+            </form>
+          </li>
+        {{end}}
+      </ul>
+    {{else}}
+      <p class="muted">No one else matches "{{.Q}}". Contacts can't be in groups.</p>
+    {{end}}
+  {{end}}
+  {{end}}
+</div>
+{{end}}

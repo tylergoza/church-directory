@@ -1,0 +1,30 @@
+{{/* Member-facing pieces. They are given access view models only (PersonView, FamilyView), never a store.Person: what is in them already passed Visible(). */}}
+
+{{/* A family card on the directory page: names under their address. */}}
+{{define "family-card"}}
+<article class="card family">
+  <div class="photo-row">
+  {{if .Photo}}<img class="photo-thumb" src="{{thumbURL .Photo}}" alt="" loading="lazy" width="64" height="64">{{end}}
+  <div>
+  <h3 class="card__title"><a href="/households/{{.ID}}">{{.Name}}</a></h3>
+  {{if .Anniversary}}<p class="muted small">Anniversary: {{.Anniversary}}</p>{{end}}
+  {{range .Groups}}
+    <div class="family__group">
+      {{if .Address}}<p class="family__address">{{if .Label}}<span class="muted">{{.Label}}:</span> {{end}}{{.Address}}</p>{{end}}
+      <p class="family__people">{{range $i, $p := .People}}{{if $i}}, {{end}}<a href="/people/{{$p.ID}}">{{$p.Name}}</a>{{end}}</p>
+    </div>
+  {{end}}
+  </div>
+  </div>
+</article>
+{{end}}
+
+{{/* What a person shows, as a definition list. Pass a PersonView. */}}
+{{define "person-details"}}
+  <dl class="facts">
+    {{if .Email}}<div><dt>Email</dt><dd><a href="mailto:{{.Email}}">{{.Email}}</a></dd></div>{{end}}
+    {{if .Phone}}<div><dt>Phone</dt><dd><a href="{{telURL .Phone}}">{{.Phone}}</a></dd></div>{{end}}
+    {{if .Birthday.Text}}<div><dt>Birthday</dt><dd>{{.Birthday.Text}}</dd></div>{{end}}
+    {{if .Anniversary.Text}}<div><dt>Anniversary</dt><dd>{{.Anniversary.Text}}</dd></div>{{end}}
+  </dl>
+{{end}}

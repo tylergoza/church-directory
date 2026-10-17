@@ -1,0 +1,42 @@
+{{define "content"}}
+<div class="page-head">
+  <div><h1>People</h1><p class="muted">Everyone in the directory. A person isn't the same as a login: most people never sign in.</p></div>
+  <a class="btn btn--primary" href="/admin/people/new">Add person</a>
+</div>
+{{template "filter-tabs" (dict "Filters" .Filters "Show" .Show "Base" "/admin/people")}}
+<form method="get" action="/admin/people" class="inline-fields" data-controller="autosubmit">
+  {{if .Show}}<input type="hidden" name="show" value="{{.Show}}">{{end}}
+  <div class="field">
+    <label for="q" class="sr-only">Search by name</label>
+    <input id="q" name="q" type="search" value="{{.Q}}" placeholder="Search by name" data-action="input->autosubmit#debounced" autocomplete="off">
+  </div>
+  <button type="submit" class="btn btn--sm">Search</button>
+</form>
+{{if .People}}
+<div class="table-wrap">
+  <table class="table table--stack">
+    <thead><tr><th>Name</th><th>Household</th><th>Email</th><th>Status</th></tr></thead>
+    <tbody>
+      {{range .People}}
+        <tr>
+          <td data-label="Name"><a href="/admin/people/{{.ID}}"><strong>{{.LastName}}, {{if .GoesBy}}{{.GoesBy}}{{else}}{{.FirstName}}{{end}}{{if .Suffix}} {{.Suffix}}{{end}}</strong></a></td>
+          <td data-label="Household">{{join .Households ", "}}</td>
+          <td data-label="Email">{{.Email}}</td>
+          <td data-label="Status">
+            <span class="badges">
+              {{if eq .Kind "contact"}}<span class="badge badge--locked">Contact</span>{{end}}
+              {{if .UserID}}<span class="badge badge--public">Has login</span>{{end}}
+              {{if or .Pending .PendingName}}<span class="badge badge--warn">Pending</span>{{end}}
+              {{if .Archived}}<span class="badge badge--locked">Archived</span>{{end}}
+            </span>
+          </td>
+        </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+<p class="muted small">{{pluralize (len .People) "person"}}.</p>
+{{else}}
+<div class="empty"><p>No one here{{if .Q}} matches "{{.Q}}"{{end}}.</p></div>
+{{end}}
+{{end}}

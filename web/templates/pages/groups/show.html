@@ -1,0 +1,24 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/groups">Groups</a></nav>
+<div class="page-head">
+  <div>
+    <h1>{{.Group.Name}}</h1>
+    {{if .Group.Description}}<p class="muted">{{.Group.Description}}</p>{{end}}
+    {{if .Group.StaffOnly}}<p><span class="badge badge--locked">Staff only</span></p>{{end}}
+  </div>
+  <div class="page-head__actions">
+    <a class="btn btn--sm" href="/?group={{.Group.ID}}">In the directory</a>
+    {{if .User.IsStaff}}<a class="btn btn--sm" href="/admin/groups/{{.Group.ID}}">Edit</a>{{end}}
+  </div>
+</div>
+{{if .Group.People}}
+  {{range .Group.People}}
+    <article class="card family">
+      <h3 class="card__title"><a href="/people/{{.Person.ID}}">{{.Person.Name}}</a>{{if .Label}} <span class="muted">({{.Label}})</span>{{end}}</h3>
+      {{template "person-details" .Person}}
+    </article>
+  {{end}}
+{{else}}
+  <div class="empty"><p>No one to show in this group.</p></div>
+{{end}}
+{{end}}

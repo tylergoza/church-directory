@@ -1,0 +1,21 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/admin/households">Households</a> / <a href="/admin/households/{{.Household.ID}}">{{.Household.Name}}</a></nav>
+<div class="page-head"><div><h1>Delete {{.Household.Name}}?</h1></div></div>
+<div class="card narrow">
+  <div class="alert alert--error" role="alert">
+    <strong>This can't be undone.</strong>
+    <ul>
+      <li>The household and its addresses are removed.</li>
+      <li>{{if .Members}}The {{pluralize (len .Members) "person"}} in it ({{range $i, $m := .Members}}{{if $i}}, {{end}}{{$m.Name}}{{end}}) stay in the directory, in no household.{{else}}No one is in it.{{end}}</li>
+    </ul>
+  </div>
+  <p>To hide it instead, <a href="/admin/households/{{.Household.ID}}">archive it</a>.</p>
+  <form method="post" action="/admin/households/{{.Household.ID}}/delete" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="form__actions">
+      <button type="submit" class="btn btn--danger-ghost">Yes, delete {{.Household.Name}}</button>
+      <a class="btn btn--ghost" href="/admin/households/{{.Household.ID}}">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

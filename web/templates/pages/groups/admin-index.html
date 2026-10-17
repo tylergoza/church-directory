@@ -1,0 +1,25 @@
+{{define "content"}}
+<div class="page-head">
+  <div><h1>Groups</h1><p class="muted">Labels, not permissions. Being in a group gives no access anywhere.</p></div>
+  <a class="btn btn--primary" href="/admin/groups/new">Add group</a>
+</div>
+{{template "filter-tabs" (dict "Filters" .Filters "Show" .Show "Base" "/admin/groups")}}
+{{if .Groups}}
+<div class="table-wrap">
+  <table class="table table--stack">
+    <thead><tr><th>Group</th><th>People</th><th>Visible to</th></tr></thead>
+    <tbody>
+      {{range .Groups}}
+        <tr>
+          <td data-label="Group"><a href="/admin/groups/{{.ID}}"><strong>{{.Name}}</strong></a>{{if .Description}}<br><span class="muted small">{{.Description}}</span>{{end}}</td>
+          <td data-label="People">{{.Count}}</td>
+          <td data-label="Visible to">{{if .StaffOnly}}<span class="badge badge--locked">Staff only</span>{{else}}Members{{end}}</td>
+        </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{else}}
+<div class="empty"><p>No {{if eq .Show "archived"}}archived {{end}}groups.</p></div>
+{{end}}
+{{end}}

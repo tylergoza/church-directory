@@ -1,0 +1,66 @@
+{{/* The staff person page's login section. Needs the person page data: .Person, .CSRF, .LinkedUser, .LinkableUsers (or .SSOLink, .LinkableSSO, .LinkError), .AgeKnown, .KnownUnder13, .Under13Warning */}}
+{{define "person-login"}}
+<div class="card narrow">
+  <h2 class="section__title">Login</h2>
+  <p class="under13-note">{{.Under13Warning}}</p>
+  {{if .Person.UserID}}
+    <p>Linked to the user <strong>{{if .LinkedUser}}{{.LinkedUser.Name}} ({{.LinkedUser.Username}}){{else}}(removed user){{end}}</strong>.</p>
+    <form method="post" action="/admin/people/{{.Person.ID}}/unlink" class="inline-form">
+      {{template "csrf" .CSRF}}
+      <button type="submit" class="btn btn--sm">Unlink</button>
+    </form>
+    <p class="hint">Unlinking keeps the profile and the user. The profile's visibility choices stay as they are.</p>
+  {{else if .KnownUnder13}}
+    <p>This person is known to be under 13, so they can't be linked to a user or given their own login.</p>
+  {{else}}
+    <form method="post" action="/admin/people/{{.Person.ID}}/link" class="form">
+      {{template "csrf" .CSRF}}
+      <div class="field">
+        <label for="link_user">Link to user</label>
+        {{if .SSOLink}}
+        <select id="link_user" name="sub" required>
+          <option value="">Choose a user&hellip;</option>
+          {{range .LinkableSSO}}<option value="{{.Sub}}">{{.Name}} ({{.Username}})</option>{{end}}
+        </select>
+        {{with .LinkError}}<p class="hint text-alert">{{.}}</p>{{end}}
+        <p class="hint">People with directory access in User Management and no profile yet. A user has at most one profile.</p>
+        {{else}}
+        <select id="link_user" name="user_id" required>
+          <option value="">Choose a user&hellip;</option>
+          {{range .LinkableUsers}}<option value="{{.ID}}">{{.Name}} ({{.Username}})</option>{{end}}
+        </select>
+        <p class="hint">Only users without a profile are listed. A user has at most one profile.</p>
+        {{end}}
+      </div>
+      {{if not .AgeKnown}}
+        <label class="check"><input type="checkbox" name="attest13" value="1"> This person is 13 or older</label>
+        <p class="hint">Needed because there is no birth year. Who ticked it and when is recorded.</p>
+      {{end}}
+      <div class="form__actions"><button type="submit" class="btn btn--primary">Link to user</button></div>
+    </form>
+    <hr>
+    <h3>Can have their own login</h3>
+    {{if .Person.LoginAllowed}}
+      <p>On. Make a one-time link, valid for 14 days, for them to open after they sign in.</p>
+      <div class="form__actions">
+        <form method="post" action="/admin/people/{{.Person.ID}}/login" class="inline-form">
+          {{template "csrf" .CSRF}}<input type="hidden" name="action" value="claim">
+          <button type="submit" class="btn btn--primary btn--sm">Make claim link</button>
+        </form>
+        <form method="post" action="/admin/people/{{.Person.ID}}/login" class="inline-form">
+          {{template "csrf" .CSRF}}<input type="hidden" name="action" value="disallow">
+          <button type="submit" class="btn btn--sm">Turn off</button>
+        </form>
+      </div>
+    {{else}}
+      <form method="post" action="/admin/people/{{.Person.ID}}/login" class="form">
+        {{template "csrf" .CSRF}}<input type="hidden" name="action" value="allow">
+        {{if not .AgeKnown}}
+          <label class="check"><input type="checkbox" name="attest13" value="1"> This person is 13 or older</label>
+        {{end}}
+        <div class="form__actions"><button type="submit" class="btn btn--sm">Turn on</button></div>
+      </form>
+    {{end}}
+  {{end}}
+</div>
+{{end}}

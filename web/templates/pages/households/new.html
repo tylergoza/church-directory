@@ -1,0 +1,25 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/admin/households">Households</a></nav>
+<div class="page-head"><div><h1>Add household</h1></div></div>
+<div class="card narrow">
+  {{template "errors" .Errors}}
+  <form method="post" action="/admin/households" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="name">Name</label>
+      <input id="name" name="name" value="{{.Name}}" placeholder="The Goza Family" required>
+    </div>
+    <div class="field">
+      <label for="kind">Kind</label>
+      <select id="kind" name="kind">
+        <option value="member" {{if ne .Kind "contact"}}selected{{end}}>Member: listed in the directory</option>
+        <option value="contact" {{if eq .Kind "contact"}}selected{{end}}>Contact: never listed or printed</option>
+      </select>
+    </div>
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Add household</button>
+      <a class="btn btn--ghost" href="/admin/households">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

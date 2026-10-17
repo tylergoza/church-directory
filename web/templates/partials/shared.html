@@ -1,0 +1,60 @@
+{{/* Form error list. Pass .Errors ([]string). */}}
+{{define "errors"}}
+  {{if .}}
+    <div class="alert alert--error" role="alert">
+      <strong>Please fix the following:</strong>
+      <ul>{{range .}}<li>{{.}}</li>{{end}}</ul>
+    </div>
+  {{end}}
+{{end}}
+
+{{define "csrf"}}<input type="hidden" name="_csrf" value="{{.}}">{{end}}
+
+{{/* Delete button with confirmation. dict "Action" url "CSRF" token "Label" text "Confirm" message */}}
+{{define "delete-button"}}
+  <form method="post" action="{{.Action}}" class="inline-form"
+        data-controller="confirm" data-confirm-message-value="{{.Confirm}}" data-action="submit->confirm#check">
+    {{template "csrf" .CSRF}}
+    <button type="submit" class="btn btn--danger-ghost btn--sm">{{.Label}}</button>
+  </form>
+{{end}}
+
+{{/* A partial date: month select, day and year. dict "Label" "Birthday" "Prefix" "birth" "Month" m "Day" d "Year" y (the text typed, so a bad entry comes back as typed) */}}
+{{define "date-fields"}}
+  <fieldset class="fieldset">
+    <legend>{{.Label}} <span class="optional">any part can be left empty</span></legend>
+    <div class="date-parts">
+      <div class="field">
+        <label for="{{.Prefix}}_month">Month</label>
+        <select id="{{.Prefix}}_month" name="{{.Prefix}}_month">
+          {{range months}}<option value="{{.Value}}" {{if eq .Value $.Month}}selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+      </div>
+      <div class="field">
+        <label for="{{.Prefix}}_day">Day</label>
+        <input id="{{.Prefix}}_day" name="{{.Prefix}}_day" type="number" min="1" max="31" inputmode="numeric" value="{{.Day}}">
+      </div>
+      <div class="field">
+        <label for="{{.Prefix}}_year">Year</label>
+        <input id="{{.Prefix}}_year" name="{{.Prefix}}_year" type="number" min="1850" inputmode="numeric" value="{{.Year}}">
+      </div>
+    </div>
+  </fieldset>
+{{end}}
+
+{{/* A row of filter links. dict "Filters" list "Show" current "Base" "/admin/people" "Q" search */}}
+{{define "filter-tabs"}}
+  <nav class="tabs" aria-label="Filter">
+    {{range .Filters}}<a href="{{$.Base}}{{if .Value}}?show={{.Value}}{{end}}" {{if eq .Value $.Show}}aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+  </nav>
+{{end}}
+
+{{/* Default / Shown / Hidden. dict "Name" field-name "State" "", "1" or "0" "Default" bool "ID" id "Label" text */}}
+{{define "vis-select"}}
+  <label class="sr-only" for="{{.ID}}">{{.Label}}</label>
+  <select id="{{.ID}}" name="{{.Name}}">
+    <option value="" {{if eq .State ""}}selected{{end}}>Default ({{if .Default}}shown{{else}}hidden{{end}})</option>
+    <option value="1" {{if eq .State "1"}}selected{{end}}>Shown</option>
+    <option value="0" {{if eq .State "0"}}selected{{end}}>Hidden</option>
+  </select>
+{{end}}

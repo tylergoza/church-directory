@@ -1,0 +1,244 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/admin/people">People</a>{{with .Household}} / <a href="/admin/households/{{.ID}}">{{.Name}}</a>{{end}}</nav>
+<div class="page-head">
+  <div>
+    <h1>{{if .Person}}{{.Person.Name}}{{else}}Add person{{end}}</h1>
+    {{if .Person}}
+      <p class="muted">
+        {{if .Person.GoesBy}}Legal name: {{.Person.LegalName}}. {{end}}
+        {{if .PersonHouseholds}}In {{range $i, $h := .PersonHouseholds}}{{if $i}}, {{end}}<a href="/admin/households/{{$h.HouseholdID}}">{{$h.Name}}</a> ({{$h.Role}}){{end}}.{{else}}Not in a household.{{end}}
+      </p>
+      <span class="badges">
+        {{if .Person.Archived}}<span class="badge badge--locked">Archived</span>{{end}}
+        {{if eq .Person.Kind "contact"}}<span class="badge badge--locked">Contact</span>{{end}}
+        {{if .Person.UserID}}<span class="badge badge--public">Has login</span>{{end}}
+        {{if or .Person.Pending .Person.PendingName}}<span class="badge badge--warn">Pending</span>{{end}}
+      </span>
+    {{else if .Household}}
+      <p class="muted">To be added to <a href="/admin/households/{{.Household.ID}}">{{.Household.Name}}</a>.</p>
+    {{end}}
+  </div>
+</div>
+
+{{if .Matches}}
+<div class="alert alert--info match-panel" role="status">
+  <strong>Already in the directory:</strong>
+  <ul class="plain-list">
+    {{range .Matches}}
+      <li>
+        <a href="/admin/people/{{.Person.ID}}">{{.Person.Name}}</a>
+        {{if .Households}}({{range $i, $h := .Households}}{{if $i}}, {{end}}{{$h.Name}}{{end}}){{end}}
+        {{if .Person.Archived}}<span class="badge badge--locked">Archived</span>{{end}}
+        {{if eq .Person.Kind "contact"}}<span class="badge badge--locked">Contact</span>{{end}}
+        {{if $.Household}}
+          <form method="post" action="/admin/households/{{$.Household.ID}}/members" class="inline-form">
+            {{template "csrf" $.CSRF}}
+            <input type="hidden" name="person_id" value="{{.Person.ID}}">
+            <input type="hidden" name="role" value="{{$.Role}}">
+            <input type="hidden" name="address_id" value="{{$.AddressID}}">
+            <button type="submit" class="btn btn--sm btn--primary">Use that one</button>
+          </form>
+        {{else}}
+          <a class="btn btn--sm btn--primary" href="/admin/people/{{.Person.ID}}">Use that one</a>
+        {{end}}
+      </li>
+    {{end}}
+  </ul>
+  <p class="hint">Is this someone else with the same name? Add a suffix (Jr., III) or a goes-by name if that helps, then <strong>Add anyway</strong>.{{if .Household}} Using an adult who's in another household moves them here.{{end}}</p>
+</div>
+{{end}}
+
+<div class="card narrow">
+  {{template "errors" .Errors}}
+  <form method="post" action="{{if .Person}}/admin/people/{{.Person.ID}}{{else}}/admin/people{{end}}" class="form">
+    {{template "csrf" .CSRF}}
+    {{with .Household}}
+      <input type="hidden" name="household_id" value="{{.ID}}">
+    {{end}}
+    <div class="field-row">
+      <div class="field">
+        <label for="first_name">First name</label>
+        <input id="first_name" name="first_name" value="{{.Form.First}}" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="last_name">Last name</label>
+        <input id="last_name" name="last_name" value="{{.Form.Last}}" required autocomplete="off">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="goes_by">Goes by <span class="optional">optional</span></label>
+        <input id="goes_by" name="goes_by" value="{{.Form.GoesBy}}" autocomplete="off">
+        <p class="hint">Shows in place of the first name.</p>
+      </div>
+      <div class="field">
+        <label for="suffix">Suffix <span class="optional">optional</span></label>
+        <input id="suffix" name="suffix" value="{{.Form.Suffix}}" placeholder="Jr., Sr., III" autocomplete="off">
+        <p class="hint">Tells a father and son apart.</p>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="email">Email <span class="optional">optional</span></label>
+        <input id="email" name="email" type="text" inputmode="email" autocapitalize="none" value="{{.Form.Email}}">
+      </div>
+      <div class="field">
+        <label for="phone">Phone <span class="optional">optional</span></label>
+        <input id="phone" name="phone" type="text" inputmode="tel" value="{{.Form.Phone}}">
+      </div>
+    </div>
+    {{template "date-fields" (dict "Label" "Birthday" "Prefix" "birth" "Month" .Form.BirthMonth "Day" .Form.BirthDay "Year" .Form.BirthYear)}}
+    {{template "date-fields" (dict "Label" "Anniversary" "Prefix" "anniv" "Month" .Form.AnnivMonth "Day" .Form.AnnivDay "Year" .Form.AnnivYear)}}
+    <div class="field">
+      <label for="kind">Kind</label>
+      <select id="kind" name="kind">
+        <option value="member" {{if ne .Form.Kind "contact"}}selected{{end}}>Member: listed in the directory</option>
+        <option value="contact" {{if eq .Form.Kind "contact"}}selected{{end}}>Contact: never listed or printed</option>
+      </select>
+      <p class="hint">A contact is for someone like a child's other parent who doesn't attend.</p>
+    </div>
+    {{if and (not .Person) .Household}}
+      <div class="field-row">
+        <div class="field">
+          <label for="role">Role in the household</label>
+          <select id="role" name="role">
+            <option value="head" {{if eq .Role "head"}}selected{{end}}>Head</option>
+            <option value="adult" {{if eq .Role "adult"}}selected{{end}}>Adult</option>
+            <option value="child" {{if eq .Role "child"}}selected{{end}}>Child</option>
+          </select>
+        </div>
+        {{if .Addresses}}
+        <div class="field">
+          <label for="address_id">Address</label>
+          <select id="address_id" name="address_id">
+            <option value="0">No address</option>
+            {{range .Addresses}}<option value="{{.ID}}" {{if eq .ID $.AddressID}}selected{{end}}>{{.Title}}</option>{{end}}
+          </select>
+        </div>
+        {{end}}
+      </div>
+    {{end}}
+    <div class="form__actions">
+      {{if .Person}}
+        <button type="submit" class="btn btn--primary">Save</button>
+      {{else if .Matches}}
+        <button type="submit" name="add_anyway" value="1" class="btn btn--primary">Add anyway</button>
+      {{else}}
+        <button type="submit" class="btn btn--primary">Add person</button>
+      {{end}}
+      <a class="btn btn--ghost" href="{{if .Household}}/admin/households/{{.Household.ID}}{{else}}/admin/people{{end}}">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{{if .Person}}
+<div class="card narrow">
+  <h2 class="section__title">Family</h2>
+  <p class="muted">Parents and spouse links, and starting their own household.</p>
+  <p><a class="btn btn--sm" href="/admin/people/{{.Person.ID}}/family">Family links and own household</a></p>
+</div>
+
+<div class="card narrow">
+  <h2 class="section__title">Photo</h2>
+  {{template "photo-form" (dict "Action" (printf "/admin/people/%d/photo" .Person.ID) "CSRF" .CSRF "Current" .Person.Photo "Who" .Person.Name)}}
+</div>
+
+<div class="card narrow">
+  <h2 class="section__title">What shows</h2>
+  <p class="muted">Default follows <a href="/admin/defaults">the admin's defaults</a>. <strong>Force hide</strong> hides a field from everyone except staff, this person and their household heads.</p>
+  <form method="post" action="/admin/people/{{.Person.ID}}/visibility" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="table-wrap">
+      <table class="table table--stack">
+        <thead><tr><th>Field</th><th>Setting</th><th>Force hide</th></tr></thead>
+        <tbody>
+          {{range .Vis}}
+            <tr>
+              <td data-label="Field">{{.Label}}</td>
+              <td data-label="Setting">{{template "vis-select" (dict "Name" (printf "shown:%s" .Field) "ID" (printf "vis-%s" .Field) "Label" .Label "State" .State "Default" .Default)}}</td>
+              <td data-label="Force hide"><label class="check"><input type="checkbox" name="force:{{.Field}}" value="1" {{if .Force}}checked{{end}}><span class="sr-only">Force hide {{.Label}}</span></label></td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Save visibility</button></div>
+  </form>
+</div>
+
+{{if .Notes}}{{template "notes-section" (dict "Sec" .Notes "CSRF" .CSRF)}}{{end}}
+
+{{template "person-login" .}}
+
+<div class="card narrow">
+  <h2 class="section__title">Heads of household</h2>
+  <p class="muted">Whether the heads of {{.Person.FirstName}}'s households may edit this profile. It only matters for someone with a login who is an adult: heads always look after children and people with no login. <strong>Lock</strong> it so only staff can change it: on for someone who can no longer manage the technology, off for protective situations. Every change a head makes is logged below.</p>
+  <form method="post" action="/admin/people/{{.Person.ID}}/heads-may-edit" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="heads-may-edit">Heads may edit</label>
+      <select id="heads-may-edit" name="heads_may_edit">
+        <option value="0" {{if not .Person.HeadsMayEdit}}selected{{end}}>Off</option>
+        <option value="1" {{if .Person.HeadsMayEdit}}selected{{end}}>On</option>
+      </select>
+    </div>
+    <label class="check"><input type="checkbox" id="heads-lock" name="lock" value="1" {{if .Person.HeadsMayEditLocked}}checked{{end}}> Lock it (only staff can change it)</label>
+    <div class="field">
+      <label for="heads-reason">Reason <span class="optional">needed to lock</span></label>
+      <input id="heads-reason" name="reason" maxlength="300" value="{{.Person.HeadsMayEditReason}}">
+    </div>
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Save</button></div>
+  </form>
+</div>
+
+<div class="card narrow">
+  <h2 class="section__title">Lives in more than one household</h2>
+  <form method="post" action="/admin/people/{{.Person.ID}}/multi-household" class="form">
+    {{template "csrf" .CSRF}}
+    <label class="check"><input type="checkbox" id="multi-household" name="multi_household" value="1" {{if .Person.MultiHousehold}}checked{{end}}> Lives in more than one household</label>
+    <div class="field">
+      <label for="multi-reason">Why</label>
+      <select id="multi-reason" name="multi_reason">
+        <option value="divorced" {{if eq .Person.MultiReason "divorced"}}selected{{end}}>Parents divorced or separated</option>
+        <option value="other" {{if eq .Person.MultiReason "other"}}selected{{end}}>Other</option>
+      </select>
+    </div>
+    <div class="form__actions"><button type="submit" class="btn btn--sm">Save</button></div>
+  </form>
+  {{if and .Person.MultiHousehold (gt (len .PersonHouseholds) 1)}}
+    <form method="post" action="/admin/people/{{.Person.ID}}/primary-household" class="inline-fields">
+      {{template "csrf" .CSRF}}
+      <div class="field">
+        <label for="primary-household">Primary household</label>
+        <select id="primary-household" name="household_id">
+          {{range .PersonHouseholds}}<option value="{{.HouseholdID}}" {{if .Primary}}selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+      </div>
+      <button type="submit" class="btn btn--sm">Save primary</button>
+    </form>
+  {{end}}
+  <p class="hint">Only then can a child be added to a second household (as a child). Add them from the household's page; a head can also ask from /me.</p>
+</div>
+
+<div class="card narrow">
+  <h2 class="section__title">Archive or delete</h2>
+  <p class="muted">Archiving hides {{.Person.FirstName}} everywhere except the archive list here, and can be undone. Deleting really removes them, with their notes and photo.</p>
+  <div class="form__actions">
+    <form method="post" action="/admin/people/{{.Person.ID}}/archive" class="inline-form">
+      {{template "csrf" .CSRF}}
+      <input type="hidden" name="archive" value="{{if .Person.Archived}}0{{else}}1{{end}}">
+      <button type="submit" class="btn">{{if .Person.Archived}}Bring back from the archive{{else}}Archive{{end}}</button>
+    </form>
+    <a class="btn btn--danger-ghost" href="/admin/people/{{.Person.ID}}/delete">Delete&hellip;</a>
+  </div>
+</div>
+{{if .Changes}}
+<div class="card narrow">
+  <h2 class="section__title">History</h2>
+  <ul class="plain-list">
+    {{range .Changes}}<li>{{.What}} <span class="muted small">by {{if .By}}{{.By}}{{else}}someone{{end}}, {{fmtTime .At}}</span></li>{{end}}
+  </ul>
+</div>
+{{end}}
+{{end}}
+{{end}}

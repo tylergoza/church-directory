@@ -1,0 +1,20 @@
+{{define "family-suggestions"}}
+<div class="card">
+  <h2 class="section__title">Family links for {{.Sug.Person.Name}}</h2>
+  <p class="muted">Tick the links to save. Untick any that aren't right (a step-parent, say).</p>
+  <form method="post" action="{{if .Action}}{{.Action}}{{else}}/admin/households/{{.HouseholdID}}/family-links{{end}}" class="form">
+    {{template "csrf" .CSRF}}
+    {{$child := .Sug.Person}}
+    {{range .Sug.Parents}}
+      <label class="check"><input type="checkbox" id="sg-p-{{.ID}}" name="link" value="parent:{{.ID}}:{{$child.ID}}" checked> {{.Name}} is a parent of {{$child.Name}}</label>
+    {{end}}
+    {{with .Sug.Spouse}}
+      <label class="check"><input type="checkbox" id="sg-s-{{.ID}}" name="link" value="spouse:{{.ID}}:{{$child.ID}}" checked> {{.Name}} and {{$child.Name}} are spouses</label>
+    {{end}}
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Save links</button>
+      <a class="btn" href="{{if .Skip}}{{.Skip}}{{else}}/admin/households/{{.HouseholdID}}{{end}}">Skip</a>
+    </div>
+  </form>
+</div>
+{{end}}

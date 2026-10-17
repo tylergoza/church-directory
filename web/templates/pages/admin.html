@@ -1,0 +1,24 @@
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>Admin</h1>
+    <p class="muted">Groups and the Needs action list will be here.</p>
+  </div>
+</div>
+<ul class="plain-list">
+  <li><a href="/admin/people">People</a>: add, edit, archive and delete</li>
+  <li><a href="/admin/households">Households</a>: addresses and who lives where</li>
+  <li><a href="/admin/needs-action">Needs action</a>{{if .NeedsCount}} ({{.NeedsCount}}){{end}}: pending profiles, same-name entries and under-13 logins</li>
+  <li><a href="/admin/groups">Groups</a>: Singers, Deacons and so on, with who is in them</li>
+  <li><a href="/admin/import">Import people</a>: bring in a CSV list, with a preview first</li>
+</ul>
+{{if .User.IsAdmin}}
+<ul class="plain-list">
+  <li><a href="/admin/defaults">Default visibility</a>: what shows when nobody chose</li>
+  <li><a href="/admin/users">Users</a>: local logins</li>
+  <li><a href="/admin/connections">Connections</a>: links to the church's other apps</li>
+  <li><a href="/admin/tokens">API tokens</a>: for the other church apps</li>
+  <li><a href="/admin/settings">Settings</a> and backup</li>
+</ul>
+{{end}}
+{{end}}

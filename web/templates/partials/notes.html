@@ -1,0 +1,67 @@
+{{/* A note's fields. dict "N" note-or-nil "Sec" notesSection "ID" id-prefix */}}
+{{define "note-fields"}}
+  <div class="field-row">
+    <div class="field">
+      <label for="{{.ID}}-kind">Kind</label>
+      <select id="{{.ID}}-kind" name="kind">
+        {{range .Sec.Kinds}}<option value="{{.Value}}" {{if and $.N (eq $.N.Kind .Value)}}selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </div>
+    <div class="field">
+      <label for="{{.ID}}-visible">Who can see it</label>
+      <select id="{{.ID}}-visible" name="visible_to">
+        {{range .Sec.Visibilities}}<option value="{{.Value}}" {{if and $.N (eq $.N.VisibleTo .Value)}}selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label for="{{.ID}}-body">Note</label>
+    <textarea id="{{.ID}}-body" name="body" rows="3" maxlength="4000" required>{{with .N}}{{.Body}}{{end}}</textarea>
+  </div>
+  <div class="field">
+    <label class="check"><input type="checkbox" name="share_with_signups" value="1" {{if and .N .N.ShareWithSignups}}checked{{end}}> Share with sign-ups</label>
+    <p class="hint">Shown to the team running events this person signs up for, including their printed allergy list.</p>
+  </div>
+{{end}}
+
+{{/* The notes of a person. dict "Sec" notesSection "CSRF" token. Shows only notes the viewer may see (the server has already filtered). */}}
+{{define "notes-section"}}
+<div class="card" id="notes">
+  <h2 class="section__title">Notes</h2>
+  {{if .Sec.Notes}}
+    <ul class="plain-list">
+      {{range .Sec.Notes}}
+        <li>
+          <span class="badge">{{.KindLabel}}</span>
+          {{if .ShareWithSignups}}<span class="badge badge--public">Shared with sign-ups</span>{{end}}
+          <span class="muted small">Seen by: {{.VisibleLabel}}</span>
+          <p class="note-body">{{.Body}}</p>
+          {{if $.Sec.CanWrite}}
+            <details>
+              <summary>Edit</summary>
+              <form method="post" action="{{$.Sec.Base}}/notes/{{.ID}}" class="form">
+                {{template "csrf" $.CSRF}}
+                {{template "note-fields" (dict "N" . "Sec" $.Sec "ID" (printf "note%d" .ID))}}
+                <div class="form__actions"><button type="submit" class="btn btn--primary btn--sm">Save note</button></div>
+              </form>
+              {{template "delete-button" (dict "Action" (printf "%s/notes/%d/delete" $.Sec.Base .ID) "CSRF" $.CSRF "Label" "Delete note" "Confirm" "Delete this note?")}}
+            </details>
+          {{end}}
+        </li>
+      {{end}}
+    </ul>
+  {{else}}
+    <p class="muted">No notes.</p>
+  {{end}}
+  {{if .Sec.CanWrite}}
+    <details>
+      <summary>Add a note</summary>
+      <form method="post" action="{{.Sec.Base}}/notes" class="form">
+        {{template "csrf" .CSRF}}
+        {{template "note-fields" (dict "N" nil "Sec" .Sec "ID" "newnote")}}
+        <div class="form__actions"><button type="submit" class="btn btn--primary">Add note</button></div>
+      </form>
+    </details>
+  {{end}}
+</div>
+{{end}}

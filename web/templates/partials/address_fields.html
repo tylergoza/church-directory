@@ -1,0 +1,22 @@
+{{define "address-fields"}}
+  <div class="field">
+    <label>Label <span class="optional">optional</span>
+      <input name="label" value="{{.Label}}" placeholder="Main, Mom and Dad's">
+    </label>
+  </div>
+  <div class="field">
+    <label>Street
+      <input name="address1" value="{{.Address1}}" autocomplete="off">
+    </label>
+  </div>
+  <div class="field">
+    <label>Apartment, suite <span class="optional">optional</span>
+      <input name="address2" value="{{.Address2}}" autocomplete="off">
+    </label>
+  </div>
+  <div class="field-row">
+    <div class="field"><label>City <input name="city" value="{{.City}}" autocomplete="off"></label></div>
+    <div class="field field--narrow"><label>State <input name="state" value="{{.State}}" autocomplete="off"></label></div>
+    <div class="field field--narrow"><label>Postal code <input name="postal" value="{{.Postal}}" autocomplete="off"></label></div>
+  </div>
+{{end}}

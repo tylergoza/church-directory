@@ -1,0 +1,101 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/admin/people">People</a> / <a href="/admin/people/{{.Person.ID}}">{{.Person.Name}}</a></nav>
+<div class="page-head"><div><h1>Family of {{.Person.Name}}</h1></div></div>
+
+<div class="card narrow">
+  <h2 class="section__title">Family links</h2>
+  <p class="muted">Only parents and spouses are saved. Children, siblings, grandparents and grandchildren are worked out from them. Links stay when someone moves households.</p>
+  {{$id := .Person.ID}}
+  {{$csrf := .CSRF}}
+  {{template "family-link-list" (dict "Label" "Parents" "Rel" "parent" "People" .Links.Parents "ID" $id "CSRF" $csrf)}}
+  {{template "family-link-list" (dict "Label" "Spouse" "Rel" "spouse" "People" .Links.Spouses "ID" $id "CSRF" $csrf)}}
+  {{template "family-link-list" (dict "Label" "Children" "Rel" "child" "People" .Links.Children "ID" $id "CSRF" $csrf)}}
+
+  <h3 class="section__title">Add a link</h3>
+  <form method="get" action="/admin/people/{{.Person.ID}}/family" class="inline-fields">
+    <div class="field">
+      <label for="q">Find the person</label>
+      <input id="q" name="q" type="search" value="{{.Q}}" placeholder="Search by name" autocomplete="off">
+    </div>
+    <button type="submit" class="btn btn--sm">Search</button>
+  </form>
+  {{if .Q}}
+    {{if .Found}}
+      <ul class="plain-list found">
+        {{range .Found}}
+          <li>
+            <form method="post" action="/admin/people/{{$id}}/relationships" class="inline-fields">
+              {{template "csrf" $csrf}}
+              <input type="hidden" name="person_id" value="{{.Person.ID}}">
+              <div class="field">
+                <span class="label">{{.Person.Name}}</span>
+                <span class="muted small">{{if .Households}}{{join .Households ", "}}{{else}}Not in a household{{end}}</span>
+              </div>
+              <div class="field">
+                <label class="sr-only" for="rel-{{.Person.ID}}">{{.Person.FirstName}} is</label>
+                <select id="rel-{{.Person.ID}}" name="rel">
+                  <option value="parent">{{.Person.FirstName}} is a parent of {{$.Person.FirstName}}</option>
+                  <option value="child">{{.Person.FirstName}} is a child of {{$.Person.FirstName}}</option>
+                  <option value="spouse">{{.Person.FirstName}} is {{$.Person.FirstName}}'s spouse</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn--sm btn--primary">Link</button>
+            </form>
+          </li>
+        {{end}}
+      </ul>
+    {{else}}
+      <p class="muted">No one matching "{{.Q}}".</p>
+    {{end}}
+  {{end}}
+</div>
+
+<div class="card narrow">
+  <h2 class="section__title">Start their own household</h2>
+  <p class="muted">Makes a new household and moves {{.Person.FirstName}} into it as head, with the spouse and children you pick. Family links stay as they are. {{if .PersonHouseholds}}They leave {{range $i, $h := .PersonHouseholds}}{{if $i}}, {{end}}{{$h.Name}}{{end}}.{{end}}</p>
+  <form method="post" action="/admin/people/{{.Person.ID}}/own-household" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="own-name">Household name</label>
+      <input id="own-name" name="name" type="text" value="{{.OwnName}}" required maxlength="200">
+    </div>
+    {{if .Links.Spouses}}
+      <fieldset class="field">
+        <legend>Spouse comes too</legend>
+        <label class="check"><input type="radio" id="own-sp-0" name="spouse_id" value="0"> No one</label>
+        {{range .Links.Spouses}}
+          <label class="check"><input type="radio" id="own-sp-{{.ID}}" name="spouse_id" value="{{.ID}}" {{if index $.Together .ID}}checked{{end}}> {{.Name}}</label>
+        {{end}}
+      </fieldset>
+    {{end}}
+    {{if .Links.Children}}
+      <fieldset class="field">
+        <legend>Children who come too</legend>
+        {{range .Links.Children}}
+          <label class="check"><input type="checkbox" id="own-ch-{{.ID}}" name="child_id" value="{{.ID}}" {{if index $.Together .ID}}checked{{end}}> {{.Name}}</label>
+        {{end}}
+      </fieldset>
+    {{end}}
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Start household</button></div>
+  </form>
+</div>
+{{end}}
+
+{{define "family-link-list"}}
+<h3 class="section__title">{{.Label}}</h3>
+{{if .People}}
+<ul class="plain-list">
+  {{range .People}}
+    <li>
+      <a href="/admin/people/{{.ID}}">{{.Name}}</a>
+      <form method="post" action="/admin/people/{{$.ID}}/relationships/remove" class="inline-form">
+        {{template "csrf" $.CSRF}}
+        <input type="hidden" name="person_id" value="{{.ID}}">
+        <input type="hidden" name="rel" value="{{$.Rel}}">
+        <button type="submit" class="btn btn--sm">Remove link</button>
+      </form>
+    </li>
+  {{end}}
+</ul>
+{{else}}<p class="muted">None.</p>{{end}}
+{{end}}

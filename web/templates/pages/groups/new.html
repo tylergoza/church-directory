@@ -1,0 +1,15 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/admin/groups">Groups</a></nav>
+<div class="page-head"><div><h1>Add group</h1></div></div>
+<div class="card narrow">
+  {{template "errors" .Errors}}
+  <form method="post" action="/admin/groups" class="form">
+    {{template "csrf" .CSRF}}
+    {{template "group-fields" .Form}}
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Add group</button>
+      <a class="btn btn--ghost" href="/admin/groups">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

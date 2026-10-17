@@ -1,0 +1,42 @@
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>Directory</h1>
+    <p class="muted">{{pluralize .Listing.Count "person"}}{{if .Q}} matching "{{.Q}}"{{end}}.</p>
+  </div>
+  <div class="page-head__actions"><a class="btn btn--sm" href="/birthdays">Birthdays</a></div>
+</div>
+<form method="get" action="/" class="inline-fields" role="search" data-controller="autosubmit">
+  <div class="field">
+    <label for="q" class="sr-only">Search by name</label>
+    <input id="q" name="q" type="search" value="{{.Q}}" placeholder="Search by name" data-action="input->autosubmit#debounced" autocomplete="off">
+  </div>
+  {{if .Groups}}
+  <div class="field">
+    <label for="group" class="sr-only">Only people in a group</label>
+    <select id="group" name="group" data-action="change->autosubmit#submit">
+      <option value="">All groups</option>
+      {{range .Groups}}<option value="{{.ID}}" {{if eq .ID $.GroupID}}selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </div>
+  {{end}}
+  <button type="submit" class="btn btn--sm">Search</button>
+</form>
+{{if .Listing.Entries}}
+  <nav class="az" aria-label="Jump to a letter">
+    {{range .Listing.Letters}}{{if .Has}}<a href="#{{.Anchor}}">{{.Letter}}</a>{{else}}<span aria-hidden="true">{{.Letter}}</span>{{end}}{{end}}
+  </nav>
+  {{$prev := ""}}
+  {{range .Listing.Entries}}
+    {{if ne .Letter $prev}}<h2 class="az__heading" id="{{.Anchor}}">{{.Letter}}</h2>{{$prev = .Letter}}{{end}}
+    {{with .Family}}{{template "family-card" .}}{{end}}
+    {{with .Person}}
+      <article class="card family">
+        <h3 class="card__title"><a href="/people/{{.ID}}">{{.Name}}</a></h3>
+      </article>
+    {{end}}
+  {{end}}
+{{else}}
+  <div class="empty"><p>No one here{{if .Q}} matches "{{.Q}}"{{end}}.</p></div>
+{{end}}
+{{end}}

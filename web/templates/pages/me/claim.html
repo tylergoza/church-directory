@@ -1,0 +1,13 @@
+{{define "content"}}
+<div class="page-head"><div><h1>Claim your profile</h1></div></div>
+<div class="card narrow">
+  <p>Make <strong>{{.PersonName}}</strong> your profile, linked to the account you're signed in with ({{.User.Name}})?</p>
+  <form method="post" action="/me/claim/{{.Code}}" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Yes, this is me</button>
+      <a class="btn btn--ghost" href="/me">Not me</a>
+    </div>
+  </form>
+</div>
+{{end}}
