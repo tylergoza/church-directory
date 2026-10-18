@@ -7,8 +7,8 @@ else changes.
 
 Status: planned 2026-10-16, not built.
 
-Nothing in `internal/` exists yet (the directory itself is `PLAN.md`, steps
-unchecked), so this builds on those steps: it needs `Visible()` (PLAN step
+The directory itself (`PLAN.md`) is built as of 2026-10-18, so the steps
+this builds on are in place: it needs `Visible()` (PLAN step
 3), `/me` household editing (step 5), notes (step 8), photos (step 9) and
 single sign-on (step 11). Do those first. No migration is edited; this
 plan adds `002_members_api.sql` after the first deploy, or folds into

@@ -152,6 +152,90 @@ no-store`, errors are `{"error", "code"}`. No cookies.
 - `GET /api/v1/groups`, `GET /api/v1/groups/{id}`: groups visible to
   members, with `{id, name, label}` for people.
 
+## Registering with User Management
+
+Before turning SSO on, register this app from the `user_management` repo.
+Secrets live in the macOS Keychain and reach `make` through the `with-*`
+helpers in `~/.zshrc`: `with-do` (DigitalOcean token, service
+`digitalocean`) and `with-um` (the User Management client secrets).
+
+`with-um` needs one more line for this app: `UM_DIRECTORY_SECRET`, read from
+the Keychain service `um-directory` the same way as the others.
+
+```sh
+# in ../user_management (set directory_url in its vars.yml first)
+with-do make register-app APP=directory                             # dry run: shows what would change
+with-do make register-app APP=directory DRY_RUN=false               # registers; saves the secret in the Keychain as um-directory
+with-do make register-app APP=directory DRY_RUN=false ROTATE=true   # lost or leaked secret: a new one, saved over the old
+```
+
+The SSO client ID is `directory`. A new secret stops the old one working at
+once, so deploy here straight after rotating.
+
+## Deploying
+
+The app is one binary plus one `.db` file, `secrets.key` and a `photos/`
+folder beside it, behind [Caddy](https://caddyserver.com) for HTTPS.
+`deploy/` has the systemd unit (`deploy/church-directory.service`) and a
+Caddyfile (`deploy/Caddyfile`) for doing it by hand.
+
+### DigitalOcean with Ansible
+
+`deploy/ansible/` works like the other apps', and by default puts the
+directory **on the maintenance tracker's droplet**. It finds the droplet by
+the tracker's tag (`maintenance-tracker`) and adds itself alongside, on port
+8130, with its own service user (`directory`), data folder
+(`/var/lib/church-directory`) and Caddy site, at `directory.<dns_zone>`.
+Provision adds the DNS record (pointing at the same droplet) and the service
+user; with no tagged droplet it would create one. Deploy runs the tests,
+builds the Linux binary here, backs up when the binary changes (keeping 10
+sets: the database, `secrets.key` and `photos/` together, as
+`pre-deploy-<time>.db`, `.key` and `.photos.tar.gz` in
+`/var/lib/church-directory/backups`), installs, and checks `/healthz`.
+
+Caddy's config is split so the apps can deploy without overwriting each
+other: `/etc/caddy/Caddyfile` only imports `/etc/caddy/sites/*.caddy`, and
+each app writes its own site there (`church-directory.caddy` here). The
+main Caddyfile text is the same in every app's `deploy.yml`.
+
+For a droplet of its own instead, set `droplet_name` and `do_tag` to
+`church-directory` in `vars.yml`.
+
+```sh
+cp deploy/ansible/vars.example.yml deploy/ansible/vars.yml   # set app_domain, dns_zone
+with-do with-um make provision         # first time (ends with a deploy)
+with-do with-um make deploy            # every update after that
+```
+
+On the first deploy the admin user is created before the app starts, so
+`/setup` is never exposed. Set `DIR_ADMIN_PASSWORD` to choose its password,
+or a random one is printed at the end. With `sso_url` set there's no local
+admin to create: people come from User Management.
+
+The SSO connection is optional in `vars.yml`. Leave it blank to set it up in
+the app on `/admin/connections` (the usual way): sign in with the local
+admin, fill in **Single sign-on**, press **Test sign-in**. To fix it in
+`vars.yml` instead, set `sso_url` and `base_url` and deploy through
+`with-um` so `UM_DIRECTORY_SECRET` is set; the deploy stops before building
+if `sso_url` is set without the secret or `base_url`. The secret goes only
+into the root-only systemd drop-in. To turn it back off, remove `sso_url`
+and deploy again.
+
+With a hardware SSH key, use a deploy key as described in the tracker's
+README (`ssh_private_key_file` in `vars.yml`; the same key works for all the
+apps). User Management's `backup.yml` copies this app's database to your
+machine along with the others, but not `secrets.key` or `photos/`: those
+are in the pre-deploy backups above and the weekly droplet snapshots.
+
+### Moving between hosts
+
+**Settings → Download backup** (or the `backup` command) writes a consistent
+copy of the database while the app runs. Stop the app on the new host, put
+the file at its database path (`/var/lib/church-directory/directory.db`,
+owned by `directory`), copy `secrets.key` and the `photos/` folder next to
+it, and start it. Without `secrets.key` the saved connection secrets have to
+be entered again; without `photos/` the photos are gone.
+
 ## Layout
 
 ```

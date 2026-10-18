@@ -673,7 +673,7 @@ Each step is a working app; stop after any of them.
 - [x] `/print` with the options above; print CSS: cards not split, `@page` sizes, gutter, footer and page numbers
 - [x] Cover, households, groups, birthdays and anniversaries by month, person index
 - [x] **Who may print** setting
-- [ ] Check by printing to PDF in Chrome and Safari, Letter and half-letter
+- [ ] Check by printing to PDF in Chrome and Safari, Letter and half-letter (Chrome done 2026-10-18 with 30 households: right page sizes, no split cards, footer and page numbers; Safari still to do by hand)
 
 ### 11. Single sign-on
 - [x] Copy `internal/sso` from the calendar; `RoleFromSSO` maps `member` / `editor` / `admin`; the **Single sign-on** connection section with **Test sign-in**; `local-login on|off` break-glass
