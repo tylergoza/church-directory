@@ -162,9 +162,10 @@ main.container { flex: 1; padding-top: 20px; padding-bottom: 40px; }
 .nav .btn { align-self: flex-start; margin: 2px 0; padding-left: 12px; padding-right: 12px; font-weight: 400; font-size: 1rem; }
 .nav .btn--primary { margin: 6px 12px; font-weight: 600; }
 
+/* The admin menu is too long for one row at laptop widths, so the row wraps. */
 @media (min-width: 900px) {
   .nav-toggle { display: none; }
-  .nav { display: flex; flex-direction: row; flex-basis: auto; flex: 1; align-items: center; padding: 0 0 0 24px; gap: 4px; }
+  .nav { display: flex; flex-direction: row; flex-basis: auto; flex: 1; align-items: center; flex-wrap: wrap; min-width: 0; padding: 4px 0 4px 24px; gap: 0 4px; }
   .brand { margin-right: 0; }
   .nav__spacer { display: block; flex: 1; }
   .nav a:not(.btn) { padding: 6px 10px; }
