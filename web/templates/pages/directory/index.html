@@ -4,7 +4,13 @@
     <h1>Directory</h1>
     <p class="muted">{{pluralize .Listing.Count "person"}}{{if .Q}} matching "{{.Q}}"{{end}}.</p>
   </div>
-  <div class="page-head__actions"><a class="btn btn--sm" href="/birthdays">Birthdays</a></div>
+  <div class="page-head__actions">
+    <a class="btn btn--sm" href="/birthdays">Birthdays</a>
+    {{if .User.IsStaff}}
+    <a class="btn btn--sm" href="/admin/people/new">Add person</a>
+    <a class="btn btn--primary btn--sm" href="/admin/households/new">Add household</a>
+    {{end}}
+  </div>
 </div>
 <form method="get" action="/" class="inline-fields" role="search" data-controller="autosubmit">
   <div class="field">
@@ -37,6 +43,9 @@
     {{end}}
   {{end}}
 {{else}}
-  <div class="empty"><p>No one here{{if .Q}} matches "{{.Q}}"{{end}}.</p></div>
+  <div class="empty">
+    <p>No one here{{if .Q}} matches "{{.Q}}"{{end}}.</p>
+    {{if and .User.IsStaff (not .Q) (not .GroupID)}}<p class="muted">Start with <a href="/admin/households/new">Add household</a>, or bring in an existing list with <a href="/admin/import">Import people</a>.</p>{{end}}
+  </div>
 {{end}}
 {{end}}
