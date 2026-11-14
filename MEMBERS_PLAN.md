@@ -5,7 +5,17 @@ directory's part. Everything still works with the directory alone: with
 User Management not connected, the `/api/v1/me/…` API is off and nothing
 else changes.
 
-Status: planned 2026-10-16, not built.
+Status: planned 2026-10-16. **Read endpoints built 2026-11-14 for the MCP
+server** (`../mcp_server/APP_CONTRACTS.md` section 3.2, branch
+`mcp-me-api`): the token gate is `internal/server/me_auth.go` +
+`internal/umtoken`, copied from `../calendar`; the endpoints are
+`internal/server/api_me.go` (`GET /api/v1/me`, `/api/v1/me/people?q=&limit=`,
+`/api/v1/me/people/{id}`, `/api/v1/me/households/{id}`). Differences from
+this plan, decided for the MCP pilot as in the calendar: the `/me` API is on
+whenever single sign-on is connected (no website origin yet, no CORS
+headers at all); `via` may be `mcp` or `website`; read-only, no photos and
+no notes. Website-only parts (CORS, origin setting, writes, idempotency,
+signed photo URLs, notes) are still to do.
 
 The directory itself (`PLAN.md`) is built as of 2026-10-18, so the steps
 this builds on are in place: it needs `Visible()` (PLAN step
@@ -47,11 +57,11 @@ directory; the directory never depends on the website.
 ## Steps
 
 ### 1. Token check and the `/me` plumbing
-- [ ] `internal/sso`: `CheckToken(token)` calls `GET /api/v1/token` with Basic auth and `X-Token`; a small in-memory cache (token hash, answer, expiry at most 60 s), cleared when the process restarts. A 401 or an error means refuse. Copy the HTTP client and timeouts from the existing SSO code
-- [ ] Middleware `requireMeToken` for `/api/v1/me/…`: reads only `Authorization: Bearer umd_…`, **ignores cookies completely** (no session, no CSRF on these routes), refuses a token whose `via` is not `website`
-- [ ] Find or create the local `users` row by `sso_subject`, through the same function SSO sign-in uses (`RoleFromSSO` for the role); never a second copy of that code. Link to the person's profile by `user_id` as sign-in does
-- [ ] The viewer passed to `Visible()` is built from that user exactly as for a page request (staff or member, their profile, their households)
-- [ ] Off unless set up: `/api/v1/me/…` is not registered, and answers 404, while the SSO connection is off or **Website origin** is empty
+- [x] `internal/sso`: `CheckToken(token)` calls `GET /api/v1/token` with Basic auth and `X-Token`; a small in-memory cache (token hash, answer, expiry at most 60 s), cleared when the process restarts. A 401 or an error means refuse. Copy the HTTP client and timeouts from the existing SSO code (Built for the MCP server as `internal/umtoken.Verifier.Check`, copied from the calendar: standard library only, cache keyed by SHA-256 of UM address + client ID + token, single-flight; `invalid_client` and UM down count as unavailable, 503.)
+- [x] Middleware `requireMeToken` for `/api/v1/me/…`: reads only `Authorization: Bearer umd_…`, **ignores cookies completely** (no session, no CSRF on these routes), refuses a token whose `via` is not `website` (Built for the MCP server as `meGate` in `me_auth.go`; `via` may be `mcp` or `website`.)
+- [x] Find or create the local `users` row by `sso_subject`, through the same function SSO sign-in uses (`RoleFromSSO` for the role); never a second copy of that code. Link to the person's profile by `user_id` as sign-in does (Built for the MCP server: `meLocalUser` calls `FindOrCreateSSOUser`; a non-directory role, and a login linked to a profile known to be under 13, get 403.)
+- [x] The viewer passed to `Visible()` is built from that user exactly as for a page request (staff or member, their profile, their households) (Built for the MCP server: `access.NewViewer` + `access.Load`, as the pages.)
+- [ ] Off unless set up: `/api/v1/me/…` is not registered, and answers 404, while the SSO connection is off or **Website origin** is empty (For the MCP server: off, a plain 404, while single sign-on is off; the website origin isn't required yet.)
 - [ ] **Website origin** (`settings`) on `/admin/connections` under Single sign-on, with **Test** reusing the token-check call; env overrides like the other connection values. **Accepts tokens from** is owned by User Management (`apps.accepts_from`, which refuses to delegate to an app that doesn't accept the website); show it read-only, or a link to User Management's Apps page. No local copy, same as `../calendar/MEMBERS_PLAN.md` and `../event_planning/MEMBERS_PLAN.md`
 - [ ] Errors are JSON `{"error": "...", "code": "..."}`; 401 for a bad or missing token, 403 `no_role` when the user has no role here (`guest` handled in step 8)
 - [ ] Rate limit per user (the existing limiter), on top of the 60 s cache
@@ -63,14 +73,14 @@ directory; the directory never depends on the website.
 - [ ] The service worker is unchanged: static files only; add nothing that touches `/api/` and keep a test that it never caches an API response
 
 ### 3. Read: search, profile, households (all through `Visible()`)
-- [ ] `GET /api/v1/me`: the viewer's role here, their profile, their household ids, and whether they can edit each household (the heads rule below)
-- [ ] `GET /api/v1/me/people?q=&group=&limit=&cursor=`: the same search, A-Z and group filter as the `/` page, calling the page's store query, not a copy. Every field in the JSON comes from `Visible(viewer, person, field)`; a field that isn't visible is **omitted**, not blanked
-- [ ] `GET /api/v1/me/households?q=` and `GET /api/v1/me/households/{id}`: household card with name, addresses (each through `Visible()`), members grouped by address, heads first, related households. Contacts, archived and pending people follow the page rules
-- [ ] `GET /api/v1/me/people/{id}`: person page data, including the Family section
+- [x] `GET /api/v1/me`: the viewer's role here, their profile, their household ids, and whether they can edit each household (the heads rule below) (Built for the MCP server: profile id and name, `app_role`, households with `role` and `can_edit` from `CanHeadEditHousehold`.)
+- [ ] `GET /api/v1/me/people?q=&group=&limit=&cursor=`: the same search, A-Z and group filter as the `/` page, calling the page's store query, not a copy. Every field in the JSON comes from `Visible(viewer, person, field)`; a field that isn't visible is **omitted**, not blanked (For the MCP server: `q` (required) and `limit` (cap 100) are built, from `d.Listing` with every field from the view model; `group` and `cursor` are not. q matches the name as shown, not a first name hidden behind a goes-by.)
+- [ ] `GET /api/v1/me/households?q=` and `GET /api/v1/me/households/{id}`: household card with name, addresses (each through `Visible()`), members grouped by address, heads first, related households. Contacts, archived and pending people follow the page rules (For the MCP server: `/households/{id}` is built from `d.Family` as `/households/{id}`: addresses through `VisibleAddress` and only with someone shown living there, members heads first with `address_id`; no related households yet. The `?q=` list is not built.)
+- [x] `GET /api/v1/me/people/{id}`: person page data, including the Family section (Built for the MCP server from `d.Page`: households, family (`relation`), groups; no notes.)
 - [ ] `GET /api/v1/me/profile` (my profile, edit view): all my fields with my own visibility setting per field; my households; my pending join requests and notes I may see
-- [ ] A person or household the viewer may not see is **404**, never 403 (no hint it exists)
+- [x] A person or household the viewer may not see is **404**, never 403 (no hint it exists) (Built for the MCP server: 404 JSON `not_found`.)
 - [ ] Responses are built by one `meView` function per resource that takes the viewer and cannot be handed a raw row; a test (step 9) fails if a handler returns a store type directly
-- [ ] Never in these responses: notes of other people unless the note rules allow it (step 6), logins, `user_id`, `sso_subject`, `age_attested_*`, the name-match entry that held someone
+- [x] Never in these responses: notes of other people unless the note rules allow it (step 6), logins, `user_id`, `sso_subject`, `age_attested_*`, the name-match entry that held someone (Built for the MCP server: the read endpoints carry no notes at all, no photos, logins or user IDs.)
 
 ### 4. Write: my profile and my household(s), heads of household (existing rules)
 - [ ] One function `canHeadEditHousehold(viewer, household)` = the viewer's linked profile has role `head` in it, exactly the rule `/me` already uses (same function, not a copy). Staff keep their staff rights. Other adults, children with a login and `guest` logins return false and can only view. Used by `/me` pages **and** the API handlers
@@ -120,9 +130,9 @@ All as table tests where it fits, with the API driven through `httptest` and a f
 - [ ] **A linked adult's profile isn't editable by others without the opt-in:** a head gets 403 on `PATCH …/people/{id}` for a linked adult, 200 after the person ticks `heads_may_edit`, 403 again after untick or when staff lock it off; an unlinked adult and a linked child are editable by a head of the household
 - [ ] **Notes not marked Share never leave:** a note without the tick is absent from the sign-ups API and every `/me` endpoint the note rules don't allow; with the tick it's returned only on the sign-ups call; notes never appear in search, household or print output
 - [ ] **A signed photo URL expires and is tied to the photo:** good URL 200; after `exp` 403; changed file name or viewer 403; a replaced photo's old URL 404/403; a photo hidden since signing 404; a tampered `s` 403
-- [ ] **A token for another audience is refused:** the fake User Management answers 401 for a token meant for the calendar; the directory returns 401 and caches nothing; a token whose `via` isn't `website` is refused; a good answer is cached for no more than 60 s (fake clock) and a revoked token is refused after the cache ends
+- [x] **A token for another audience is refused:** the fake User Management answers 401 for a token meant for the calendar; the directory returns 401 and caches nothing; a token whose `via` isn't `website` is refused; a good answer is cached for no more than 60 s (fake clock) and a revoked token is refused after the cache ends (For the MCP server, `api_me_test.go` `TestMeTokenChecks`: refused tokens 401 and make no user, 60 s cache with a fake clock, other `via` 403, UM down 503; `via` `mcp` or `website` accepted.)
 - [ ] **CORS refuses other origins:** the website origin gets its headers, any other origin gets none and the preflight is 403, no `*`, no credentials header; with no website origin set, no CORS headers at all
-- [ ] Off when User Management isn't connected: every `/api/v1/me/…` is 404 and the cookie pages are unchanged
+- [x] Off when User Management isn't connected: every `/api/v1/me/…` is 404 and the cookie pages are unchanged (`TestMeOffWithoutUserManagement`, for the MCP server.)
 - [ ] No cookies: a request with a valid session cookie and no Bearer is 401; no `Set-Cookie` on any `/me` response
 - [ ] `Idempotency-Key`: missing is 400; the same key replays the same response without a second write; the same key with another body is 422; one user can't replay another's key
 - [ ] Find-or-create by `sso_subject`: the first call creates the local user and links an existing profile; the second does not make a duplicate

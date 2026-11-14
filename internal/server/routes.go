@@ -212,6 +212,10 @@ func (s *Server) routes() http.Handler {
 	api("GET /api/v1/people", s.handleAPIPeople)
 	api("GET /api/v1/groups", s.handleAPIGroups)
 	api("GET /api/v1/groups/{id}", s.handleAPIGroup)
+	// Per-person reads with a User Management token (api_me.go, me_auth.go);
+	// off unless single sign-on is connected. More specific than "/api/",
+	// so the md_ token API above is untouched.
+	s.meRoutes(mux)
 	api("/api/", s.apiNotFound)
 
 	// Unknown paths: signed-out visitors go to sign in, like everything else.

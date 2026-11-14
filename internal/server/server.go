@@ -29,6 +29,7 @@ import (
 	"github.com/tylergoza/church-directory/internal/photos"
 	"github.com/tylergoza/church-directory/internal/sso"
 	"github.com/tylergoza/church-directory/internal/store"
+	"github.com/tylergoza/church-directory/internal/umtoken"
 	"github.com/tylergoza/church-directory/web"
 )
 
@@ -75,6 +76,8 @@ type Server struct {
 	ssoBroken  atomic.Value
 	ssoBaseURL atomic.Value
 	grants     *grantChecks
+	// meTokens checks the User Management tokens sent to /api/v1/me/….
+	meTokens *umtoken.Verifier
 
 	limiter *loginLimiter
 	handler http.Handler
@@ -87,7 +90,8 @@ func New(cfg Config, st *store.Store, logger *slog.Logger) (*Server, error) {
 	if cfg.Env == nil {
 		cfg.Env = os.Getenv
 	}
-	s := &Server{cfg: cfg, store: st, log: logger, limiter: newLoginLimiter(10, 15*time.Minute), grants: newGrantChecks()}
+	s := &Server{cfg: cfg, store: st, log: logger, limiter: newLoginLimiter(10, 15*time.Minute), grants: newGrantChecks(),
+		meTokens: umtoken.New()}
 	s.ssoBroken.Store("")
 	s.ssoBaseURL.Store("")
 	if cfg.Dev {
