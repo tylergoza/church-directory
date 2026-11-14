@@ -45,7 +45,6 @@ newest sibling.
 - Secrets never go in files or `export` lines in docs; the user keeps them
   in the macOS Keychain and runs make through `~/.zshrc` helpers.
 - CSP is `style-src 'self'`: no inline `style=` attributes in templates.
-- Deploys onto the maintenance tracker's droplet as `directory.<dns_zone>`;
-  the main Caddyfile text must stay identical in every repo's deploy.yml.
+- Deploy (`deploy/ansible`): the app runs on an apps box (`apps_box`, default `apps-1`, shared with the other apps) in the church DigitalOcean account as `directory.<dns_zone>` and binds its VPC address; the edge box (`../edge_proxy`) holds Caddy, DNS points at it, and this deploy writes the app's site file there. Run commands through `with-do-church`. Its state is `directory.db`, `secrets.key` and the `photos/` folder; `make backup` / `restore` / `move` carry all three. Real `do_team` and domains live in the gitignored `vars.yml`.
 - The user runs all `git commit`s themselves (YubiKey signing). Don't commit.
 - `MEMBERS_PLAN.md`: this app's part of the website members area (design in `../.claude/plans/members-site.md`): `/api/v1/me/…` for members with User Management tokens, household editing by heads of household (existing rules), signed photo URLs. Tick its checkboxes as steps are done.

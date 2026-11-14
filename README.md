@@ -156,17 +156,17 @@ no-store`, errors are `{"error", "code"}`. No cookies.
 
 Before turning SSO on, register this app from the `user_management` repo.
 Secrets live in the macOS Keychain and reach `make` through the `with-*`
-helpers in `~/.zshrc`: `with-do` (DigitalOcean token, service
-`digitalocean`) and `with-um` (the User Management client secrets).
+helpers in `~/.zshrc`: `with-do-church` (DigitalOcean token, service
+`digitalocean-church`) and `with-um` (the User Management client secrets).
 
 `with-um` needs one more line for this app: `UM_DIRECTORY_SECRET`, read from
 the Keychain service `um-directory` the same way as the others.
 
 ```sh
 # in ../user_management (set directory_url in its vars.yml first)
-with-do make register-app APP=directory                             # dry run: shows what would change
-with-do make register-app APP=directory DRY_RUN=false               # registers; saves the secret in the Keychain as um-directory
-with-do make register-app APP=directory DRY_RUN=false ROTATE=true   # lost or leaked secret: a new one, saved over the old
+with-do-church make register-app APP=directory                             # dry run: shows what would change
+with-do-church make register-app APP=directory DRY_RUN=false               # registers; saves the secret in the Keychain as um-directory
+with-do-church make register-app APP=directory DRY_RUN=false ROTATE=true   # lost or leaked secret: a new one, saved over the old
 ```
 
 The SSO client ID is `directory`. A new secret stops the old one working at
@@ -181,31 +181,50 @@ Caddyfile (`deploy/Caddyfile`) for doing it by hand.
 
 ### DigitalOcean with Ansible
 
-`deploy/ansible/` works like the other apps', and by default puts the
-directory **on the maintenance tracker's droplet**. It finds the droplet by
-the tracker's tag (`maintenance-tracker`) and adds itself alongside, on port
-8130, with its own service user (`directory`), data folder
-(`/var/lib/church-directory`) and Caddy site, at `directory.<dns_zone>`.
-Provision adds the DNS record (pointing at the same droplet) and the service
-user; with no tagged droplet it would create one. Deploy runs the tests,
-builds the Linux binary here, backs up when the binary changes (keeping 10
-sets: the database, `secrets.key` and `photos/` together, as
-`pre-deploy-<time>.db`, `.key` and `.photos.tar.gz` in
-`/var/lib/church-directory/backups`), installs, and checks `/healthz`.
+`deploy/ansible/` works like the other apps', and puts the directory on an
+**apps box** (`apps_box`, default `apps-1`) shared with the other apps, behind
+a separate edge box that runs Caddy for every app
+([edge_proxy](../edge_proxy)). It finds the box by tag and adds itself
+alongside, on port 8130, with its own service user (`directory`) and data
+folder (`/var/lib/church-directory`), at `directory.<dns_zone>`. Nothing
+private is committed: the API token comes from the environment, droplets are
+found by tag on every run, and your domain and settings go in the gitignored
+`deploy/ansible/vars.yml`.
 
-Caddy's config is split so the apps can deploy without overwriting each
-other: `/etc/caddy/Caddyfile` only imports `/etc/caddy/sites/*.caddy`, and
-each app writes its own site there (`church-directory.caddy` here). The
-main Caddyfile text is the same in every app's `deploy.yml`.
-
-For a droplet of its own instead, set `droplet_name` and `do_tag` to
-`church-directory` in `vars.yml`.
+You need Ansible on your machine, Go, a DigitalOcean API token with read/write
+scope, your domain added under **Networking → Domains** in DigitalOcean with
+the registrar's nameservers pointed at it, and the edge box provisioned first
+(edge_proxy's `make provision`, which also makes the firewalls).
 
 ```sh
 cp deploy/ansible/vars.example.yml deploy/ansible/vars.yml   # set app_domain, dns_zone
-with-do with-um make provision         # first time (ends with a deploy)
-with-do with-um make deploy            # every update after that
+with-do-church make provision  # first time
+with-do-church make deploy     # every update after that
 ```
+
+`with-do-church` runs a command with `DIGITALOCEAN_TOKEN` set for the church
+account. Set `do_team` in `vars.yml` to the account's team name and every play
+stops if the token belongs to another account.
+
+`make provision` creates the apps box if no other app has (weekly droplet
+backups on), tags it `apps` and `apps-1` plus `do_extra_tags` (the `ssh` tag
+is what edge_proxy's ssh firewall targets), adds a 1 GB swap file and
+monitoring alerts at 80% memory and disk, points the app's DNS A record at the
+edge box (never at the apps box; `manage_dns: false` skips it), installs
+updates and the service user, and runs the deploy. There are no firewalls
+here: edge_proxy makes them, including `apps-internal`, which lets only the
+edge box reach the apps' ports.
+
+`make deploy` runs the tests, builds the Linux binary here, backs up when the
+binary changes (keeping 10 sets: the database, `secrets.key` and `photos/`
+together, as `pre-deploy-<time>.db`, `.key` and `.photos.tar.gz` in
+`/var/lib/church-directory/backups`), and installs it with
+`deploy/church-directory.service`. The unit listens on the box's VPC address (a
+drop-in sets `ADDR`), not on a public port. A second play writes the app's
+Caddy site, `/etc/caddy/sites/church-directory.caddy`, on every edge box: it
+proxies the domain to the VPC address, then validates the whole config and
+reloads Caddy. The deploy stops before building if there's no edge box, and
+fails if the app doesn't answer `/healthz` on the VPC address afterwards.
 
 On the first deploy the admin user is created before the app starts, so
 `/setup` is never exposed. Set `DIR_ADMIN_PASSWORD` to choose its password,
@@ -223,18 +242,66 @@ and deploy again.
 
 With a hardware SSH key, use a deploy key as described in the tracker's
 README (`ssh_private_key_file` in `vars.yml`; the same key works for all the
-apps). User Management's `backup.yml` copies this app's database to your
-machine along with the others, but not `secrets.key` or `photos/`: those
-are in the pre-deploy backups above and the weekly droplet snapshots.
+apps). This app's own `make backup` (below) copies its database, `secrets.key`
+and `photos/` to your machine; there are also the pre-deploy backups and the
+weekly droplet snapshots.
 
 ### Moving between hosts
 
-**Settings → Download backup** (or the `backup` command) writes a consistent
-copy of the database while the app runs. Stop the app on the new host, put
-the file at its database path (`/var/lib/church-directory/directory.db`,
-owned by `directory`), copy `secrets.key` and the `photos/` folder next to
-it, and start it. Without `secrets.key` the saved connection secrets have to
-be entered again; without `photos/` the photos are gone.
+Backup and restore are separate steps that go through this machine, so they
+work between DigitalOcean accounts and need no network path between the boxes.
+Backups land in `~/Backups/mountainview/church-directory/<UTC time>/`
+(`local_backup_dir`; folders 0700, files 0600, outside every repo), holding
+`directory.db`, `secrets.key`, `photos.tgz` (the `photos/` folder) and a
+`manifest.yml` with the source, time, binary checksum and each file's sha256.
+Those three are all the app stores. A missing or empty `photos/` doesn't fail
+the backup; a missing one is just left out.
+
+```sh
+# Copy from a box. FROM is an IP (needs only SSH, no token) or a droplet name
+# (looked up in the token's account). The app keeps running.
+make backup FROM=203.0.113.10
+# The final copy: stops the app first (so the photos are archived after it
+# stops) and leaves it stopped and disabled.
+make backup FROM=203.0.113.10 STOP=true
+
+# Put a backup on the apps box. Provision first, without starting the app.
+with-do-church make provision RESTORE_PENDING=true
+with-do-church make restore BACKUP=latest      # or BACKUP=<dir>
+```
+
+`RESTORE_PENDING=true` installs the binary and unit but doesn't start the
+app or create an admin, because restore refuses to replace a database and the
+app would make an empty one on first start. Restore checks the manifest's
+checksums, installs the database and key owned by the service user at mode
+0600, unpacks `photos.tgz` into `photos/` (owned by the service user), removes
+stale `-wal`/`-shm` files, starts the app and waits for `/healthz`. If the box
+already has a database it refuses, unless `FORCE=true`, which first saves
+`pre-restore-<time>.db`, `.key` and `.photos.tar.gz` in the box's backups
+folder, then replaces `photos/` rather than merging so it matches the backup.
+A backup with no `photos.tgz` leaves the box's photos alone.
+
+To move to another apps box in the same account, set `apps_box` in `vars.yml`
+to the new box and run `with-do-church make move FROM=apps-1`. It
+backs up the old box and stops the app there, provisions the new one with
+`RESTORE_PENDING=true`, restores, and rewrites the edge site file for the new
+address. DNS isn't touched. `move` refuses when `FROM` is the current
+`apps_box`; pass `FORCE=true` to replace a database already on the new box.
+The old box keeps its data folder as a fallback, and moving back is the same
+command the other way.
+
+By hand, without Ansible: **Settings → Download backup** (or the `backup`
+command) writes a consistent copy of the database while the app runs. Stop the
+app on the new host, put the file at its database path
+(`/var/lib/church-directory/directory.db`, owned by `directory`), copy
+`secrets.key` and the `photos/` folder next to it, and start it. Without
+`secrets.key` the saved connection secrets have to be entered again; without
+`photos/` the photos are gone.
+
+**Changing domain.** List the old and new host names as `address_rewrites` in
+`vars.yml`, and each `make restore` swaps them in the database before the app
+starts. It's all or nothing: a failure leaves the database as it was and stops the
+restore. Names not listed are left alone.
 
 ## Layout
 
@@ -245,5 +312,5 @@ internal/server/         routes, sessions, CSRF, handlers
 internal/secrets/        sealing saved secrets with secrets.key
 internal/connections/    links to other apps: environment first, then settings
 web/                     templates, CSS, vendored Stimulus, service worker
-deploy/                  Ansible and Caddy
+deploy/                  systemd unit, Caddyfile, ansible/ (provision, deploy, backup, restore, move)
 ```

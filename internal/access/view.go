@@ -70,6 +70,27 @@ func NewPersonView(v *Viewer, a *PersonAccess) PersonView {
 	return pv
 }
 
+// VisibleAge is the person's age as far as the viewer may work it out from
+// the birthday parts Visible shows them: none without a shown birth year,
+// and with the month or day hidden, the youngest age that fits (as
+// store.AgeOn does for a missing part), so the age never tells the viewer
+// more than the birthday they can already see. The web pages show no age;
+// the API (MCP server) does.
+func VisibleAge(v *Viewer, a *PersonAccess, today time.Time) (int, bool) {
+	b := a.Person.Birth
+	if !Visible(v, a, store.FieldBirthYear) {
+		return 0, false
+	}
+	shown := dates.Partial{Year: b.Year}
+	if Visible(v, a, store.FieldBirthMonth) {
+		shown.Month = b.Month
+		if Visible(v, a, store.FieldBirthDay) {
+			shown.Day = b.Day
+		}
+	}
+	return store.AgeOn(shown, today)
+}
+
 // AddressGroup is the people who live at one address. Address is "" for
 // people with no address or one the viewer may not see.
 type AddressGroup struct {
